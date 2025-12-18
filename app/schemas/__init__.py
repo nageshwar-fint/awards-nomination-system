@@ -16,6 +16,7 @@ from app.schemas.base import (
     TeamRead,
     UserCreate,
     UserRead,
+    UserUpdate,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "TeamRead",
     "UserCreate",
     "UserRead",
+    "UserUpdate",
 ]

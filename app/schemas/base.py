@@ -16,6 +16,14 @@ class UserCreate(BaseSchema):
     team_id: Optional[UUID] = None
 
 
+class UserUpdate(BaseSchema):
+    name: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
+    role: Optional[str] = None
+    team_id: Optional[UUID] = None
+    status: Optional[str] = None
+
+
 class UserRead(UserCreate):
     id: UUID
     status: str

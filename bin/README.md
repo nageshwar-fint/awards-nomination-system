@@ -101,6 +101,23 @@ Collection of shell scripts to simplify common development tasks.
   ```
   Creates a new migration file that you should review before applying.
 
+- **`bin/seed.sh`** - Seed database with admin user and demo data
+  ```bash
+  # Run with default admin credentials
+  ./bin/seed.sh
+
+  # Customize admin credentials
+  ADMIN_EMAIL="admin@company.com" ADMIN_PASSWORD="SecurePass123!" ./bin/seed.sh
+
+  # Skip admin creation (only demo data)
+  SEED_ADMIN=false ./bin/seed.sh
+  ```
+  Seeds the database with:
+  - Admin user (HR role) - default: `admin@example.com` / `Admin123!`
+  - Demo team and users (if database is empty)
+  
+  See [SEEDING.md](../SEEDING.md) for full documentation.
+
 ## Quick Start
 
 1. **First time setup:**
