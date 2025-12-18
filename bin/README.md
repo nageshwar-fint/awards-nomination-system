@@ -16,12 +16,20 @@ Collection of shell scripts to simplify common development tasks.
   - Starts services
   - Runs migrations
 
-- **`bin/build.sh [service]`** - Build Docker containers
+- **`bin/build.sh [service] [--no-cache]`** - Build Docker containers
   ```bash
-  ./bin/build.sh          # Build API service (default)
-  ./bin/build.sh api      # Build API service
-  ./bin/build.sh all      # Build all services
+  ./bin/build.sh              # Build API service (default)
+  ./bin/build.sh api          # Build API service
+  ./bin/build.sh all          # Build all services
+  ./bin/build.sh api --no-cache  # Build without cache (ensures fresh dependencies)
   ```
+  The `--no-cache` flag is useful when requirements.txt changes and you want to ensure all dependencies are freshly installed.
+
+- **`bin/install-requirements.sh`** - Quick install requirements in running container
+  ```bash
+  ./bin/install-requirements.sh
+  ```
+  ⚠️ This is temporary - requirements will be lost when container restarts. Use `build.sh --no-cache` for permanent installation.
 
 ### Development
 
