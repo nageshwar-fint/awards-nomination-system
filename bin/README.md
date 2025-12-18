@@ -31,6 +31,12 @@ Collection of shell scripts to simplify common development tasks.
   ```
   ⚠️ This is temporary - requirements will be lost when container restarts. Use `build.sh --no-cache` for permanent installation.
 
+- **`bin/fix-dependencies.sh`** - Fix missing dependencies and verify installation
+  ```bash
+  ./bin/fix-dependencies.sh
+  ```
+  Installs all packages from requirements.txt and verifies key packages (bcrypt, slowapi). Useful when packages are missing after build.
+
 ### Development
 
 - **`bin/dev.sh <command>`** - Development helper

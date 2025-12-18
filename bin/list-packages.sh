@@ -27,13 +27,14 @@ if [ "$1" = "--requirements" ]; then
     fi
     
     # List packages from requirements.txt
+    MISSING_COUNT=0
     while IFS= read -r line; do
         # Skip comments and empty lines
         if [[ "$line" =~ ^#.*$ ]] || [[ -z "$line" ]]; then
             continue
         fi
         
-        # Extract package name (remove version constraints)
+        # Extract package name (remove version constraints and brackets)
         package_name=$(echo "$line" | sed 's/[>=<!=].*//' | sed 's/\[.*\]//' | xargs)
         
         if [ -n "$package_name" ]; then
@@ -43,9 +44,19 @@ if [ "$1" = "--requirements" ]; then
                 echo "✅ $package_name: $installed"
             else
                 echo "❌ $package_name: NOT INSTALLED"
+                MISSING_COUNT=$((MISSING_COUNT + 1))
             fi
         fi
     done < requirements.txt
+    
+    echo ""
+    if [ $MISSING_COUNT -gt 0 ]; then
+        echo "⚠️  $MISSING_COUNT package(s) missing!"
+        echo "💡 Run: ./bin/fix-dependencies.sh (temporary fix)"
+        echo "💡 Or: ./bin/build.sh api --no-cache (permanent fix)"
+    else
+        echo "✅ All packages from requirements.txt are installed!"
+    fi
     
 elif [ -n "$1" ] && [ "$1" != "--format" ]; then
     # Check specific package
