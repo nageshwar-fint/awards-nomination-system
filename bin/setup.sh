@@ -49,8 +49,9 @@ else
 fi
 
 echo ""
-echo "🔨 Building Docker containers..."
-docker compose build
+echo "🔨 Building Docker containers (this may take a few minutes)..."
+echo "⚠️  Building without cache to ensure all dependencies are installed..."
+docker compose build --no-cache
 
 echo ""
 echo "🚀 Starting services..."

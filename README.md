@@ -44,6 +44,8 @@ This system enables organizations to run structured nomination cycles where team
 ./bin/setup.sh
 ```
 
+> **💡 New System?** If setting up on a fresh machine, the setup script will build containers without cache to ensure all dependencies (including slowapi and bcrypt) are properly installed. See [NEW_SYSTEM_SETUP.md](NEW_SYSTEM_SETUP.md) for detailed instructions.
+
 **Manual Setup:**
 
 1. **Clone the repository**
