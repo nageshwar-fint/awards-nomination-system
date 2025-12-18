@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     # Seeding
     seed_on_start: bool = Field(default=False, alias="SEED_ON_START")
 
+    # Email settings (for password reset)
+    smtp_host: str = Field(default="localhost", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: str = Field(default="", alias="SMTP_USER")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_from_email: str = Field(default="noreply@awards-system.com", alias="SMTP_FROM_EMAIL")
+    smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
+    
+    # Password reset settings
+    password_reset_token_expire_hours: int = Field(default=1, alias="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
+    frontend_base_url: str = Field(default="http://localhost:3000", alias="FRONTEND_BASE_URL")
+
     @property
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string or '*'."""

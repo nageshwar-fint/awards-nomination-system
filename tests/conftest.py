@@ -274,6 +274,23 @@ def create_jwt_token(user_id: UUID, email: str, role: str) -> str:
 
 
 @pytest.fixture
+def test_user(db_session: Session, test_team: Team) -> User:
+    """Create a generic test user (without password)."""
+    user = User(
+        id=uuid4(),
+        name="Test User",
+        email="test@test.com",
+        role=UserRole.EMPLOYEE,
+        team_id=test_team.id,
+        status="ACTIVE",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
 def get_auth_headers():
     """Fixture that returns a function to get auth headers for a user."""
     def _get_auth_headers(user: User) -> dict:

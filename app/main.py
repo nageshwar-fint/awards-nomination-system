@@ -1,10 +1,14 @@
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import JSONResponse
+
+from app.api.v1.auth import limiter, router as auth_router
 from app.api.v1.routes import router as v1_router
 from app.config import get_settings
+from slowapi.errors import RateLimitExceeded
 from app.core.errors import (
     AppError,
     app_error_handler,
@@ -39,6 +43,13 @@ app = FastAPI(
     redoc_url="/redoc" if not settings.is_production else None,
 )
 
+# Add rate limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, lambda request, exc: JSONResponse(
+    status_code=429,
+    content={"error": {"message": "Rate limit exceeded. Please try again later.", "type": "RateLimitError"}}
+))
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -59,6 +70,7 @@ app.add_exception_handler(PermissionError, permission_error_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
 # Include routers
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])
 
 

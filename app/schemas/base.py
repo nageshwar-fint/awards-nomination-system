@@ -157,3 +157,48 @@ class FinalizeResult(BaseSchema):
     cycle_id: UUID
     rankings_created: int
     nominations_snapshotted: int
+
+
+# Authentication schemas
+class SecurityQuestionInput(BaseSchema):
+    question_text: str = Field(..., max_length=500)
+    answer: str = Field(..., min_length=1)  # Will be hashed before storage
+
+
+class RegisterRequest(BaseSchema):
+    name: str = Field(..., max_length=255)
+    email: str = Field(..., max_length=255)
+    password: str = Field(..., min_length=8)
+    team_id: Optional[UUID] = None
+    security_questions: List[SecurityQuestionInput] = Field(..., min_length=2, max_length=5)  # Require 2-5 security questions
+
+
+class LoginRequest(BaseSchema):
+    email: str = Field(..., max_length=255)
+    password: str
+
+
+class ForgotPasswordRequest(BaseSchema):
+    email: str = Field(..., max_length=255)
+
+
+class SecurityQuestionAnswer(BaseSchema):
+    question_text: str = Field(..., max_length=500)
+    answer: str = Field(..., min_length=1)
+
+
+class ResetPasswordRequest(BaseSchema):
+    email: str = Field(..., max_length=255)
+    security_question_answers: List[SecurityQuestionAnswer] = Field(..., min_length=2)  # Must answer all security questions
+    new_password: str = Field(..., min_length=8)
+
+
+class TokenResponse(BaseSchema):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: "UserRead"
+
+
+class MessageResponse(BaseSchema):
+    message: str

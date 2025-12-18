@@ -38,6 +38,14 @@ This system enables organizations to run structured nomination cycles where team
 
 ### Getting Started
 
+**Quick Setup (Recommended):**
+```bash
+# Run the setup script (does everything automatically)
+./bin/setup.sh
+```
+
+**Manual Setup:**
+
 1. **Clone the repository**
    ```bash
    git clone <repo-url> awards-nomination-system
@@ -70,7 +78,17 @@ This system enables organizations to run structured nomination cycles where team
    curl http://localhost:8000/api/v1/health
    ```
 
-## API Documentation
+**💡 Development Scripts:** See [`bin/README.md`](bin/README.md) for helpful scripts for testing, migrations, and development tasks.
+
+## Documentation
+
+### For Frontend Developers
+
+- **[Roles & Workflows Guide](ROLES_AND_WORKFLOWS.md)** - Complete guide on user roles, permissions, responsibilities, and workflows
+- **[Frontend Integration Guide](FRONTEND_GUIDE.md)** - Quick start guide with TypeScript interfaces and helper functions
+- **[API Reference](API_DOCS.md)** - Complete API endpoint documentation
+
+### Interactive API Documentation
 
 Once the API is running, interactive documentation is available at:
 
@@ -182,6 +200,17 @@ Key environment variables (see `.env.example` for full list):
 
 ## Development
 
+**Quick Development Commands:**
+```bash
+./bin/dev.sh start     # Start services
+./bin/dev.sh stop      # Stop services
+./bin/dev.sh logs      # View logs
+./bin/dev.sh shell     # Open shell in container
+./bin/dev.sh status    # Check service status
+```
+
+See [`bin/README.md`](bin/README.md) for all available scripts.
+
 ### Local Development (without Docker)
 
 1. Create virtual environment
@@ -215,6 +244,19 @@ Key environment variables (see `.env.example` for full list):
 
 Comprehensive unit tests are available for all API endpoints. See [tests/README.md](tests/README.md) for details.
 
+**Using scripts (recommended):**
+```bash
+# Run all tests
+./bin/test.sh
+
+# Run with coverage
+./bin/test-coverage.sh
+
+# Run specific test file
+./bin/test.sh tests/test_cycles.py -v
+```
+
+**Direct Docker commands:**
 ```bash
 # Run all tests
 docker compose exec api pytest
@@ -244,8 +286,24 @@ See `nageshwar.md` and `vamsi.md` for detailed responsibilities.
 
 ## Database Migrations
 
-Migrations are managed by Alembic. To create a new migration:
+Migrations are managed by Alembic.
 
+**Using scripts (recommended):**
+```bash
+# Create new migration
+./bin/migration-create.sh "Description of changes"
+
+# Apply migrations
+./bin/migrate.sh up
+
+# Check current version
+./bin/migrate.sh current
+
+# View history
+./bin/migrate.sh history
+```
+
+**Direct Docker commands:**
 ```bash
 docker compose exec api alembic revision --autogenerate -m "Description"
 docker compose exec api alembic upgrade head

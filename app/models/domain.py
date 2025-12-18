@@ -59,6 +59,7 @@ class User(TimestampedUUIDBase):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Nullable for existing users, required for new registrations
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     team_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, server_default="ACTIVE")
@@ -66,6 +67,12 @@ class User(TimestampedUUIDBase):
     team: Mapped[Team | None] = relationship("Team", back_populates="members", foreign_keys=[team_id])
     submissions: Mapped[list["Nomination"]] = relationship(
         "Nomination", back_populates="submitted_by_user", foreign_keys="Nomination.submitted_by"
+    )
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
+    )
+    security_questions: Mapped[list["SecurityQuestion"]] = relationship(
+        "SecurityQuestion", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -199,3 +206,30 @@ class RankingHistory(TimestampedUUIDBase):
     total_score: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class PasswordResetToken(TimestampedUUIDBase):
+    __tablename__ = "password_reset_tokens"
+    __table_args__ = (Index("ix_password_reset_tokens_token_hash", "token_hash"), Index("ix_password_reset_tokens_user_id", "user_id"))
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="password_reset_tokens")
+
+
+class SecurityQuestion(TimestampedUUIDBase):
+    __tablename__ = "security_questions"
+    __table_args__ = (
+        Index("ix_security_questions_user_id", "user_id"),
+        UniqueConstraint("user_id", "question_text", name="uq_user_question"),
+    )
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    question_text: Mapped[str] = mapped_column(String(500), nullable=False)
+    answer_hash: Mapped[str] = mapped_column(String(255), nullable=False)  # Hashed answer
+    question_order: Mapped[int] = mapped_column(Integer, nullable=False)  # Order of question (1, 2, 3, etc.)
+
+    user: Mapped["User"] = relationship("User", back_populates="security_questions")
