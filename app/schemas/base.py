@@ -40,6 +40,13 @@ class CycleCreate(BaseSchema):
     created_by: UUID
 
 
+class CycleUpdate(BaseSchema):
+    name: Optional[str] = Field(None, max_length=255)
+    start_at: Optional[datetime] = None
+    end_at: Optional[datetime] = None
+    status: Optional[str] = None
+
+
 class CycleRead(CycleCreate):
     id: UUID
     status: str
@@ -52,6 +59,13 @@ class CriteriaCreate(BaseSchema):
     weight: condecimal(max_digits=5, decimal_places=4)
     description: Optional[str] = None
     is_active: bool = True
+
+
+class CriteriaUpdate(BaseSchema):
+    name: Optional[str] = Field(None, max_length=255)
+    weight: Optional[condecimal(max_digits=5, decimal_places=4)] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class CriteriaRead(CriteriaCreate):

@@ -57,7 +57,14 @@ class NominationService:
     ) -> models.Nomination:
         cycle = self._get_cycle_or_raise(cycle_id)
         now = datetime.now(timezone.utc)
-        if not (cycle.start_at <= now <= cycle.end_at) or cycle.status.name != models.CycleStatus.OPEN.name:
+        # Ensure datetimes are timezone-aware for comparison
+        start_at = cycle.start_at
+        end_at = cycle.end_at
+        if start_at.tzinfo is None:
+            start_at = start_at.replace(tzinfo=timezone.utc)
+        if end_at.tzinfo is None:
+            end_at = end_at.replace(tzinfo=timezone.utc)
+        if not (start_at <= now <= end_at) or cycle.status != models.CycleStatus.OPEN:
             raise ValueError("Cycle not open for submissions")
 
         submitter = self._get_user_or_raise(submitted_by)

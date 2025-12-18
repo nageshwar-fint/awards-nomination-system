@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: awards-db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: awards-api
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app@db:5432/appdb
+      APP_ENV: local
+      APP_PORT: 8000
+      JWT_SECRET: ${JWT_SECRET:-replace_me_with_long_random_string_in_production}
+      JWT_ISSUER: ${JWT_ISSUER:-awards-nomination-system}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-awards-nomination-system}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      IDEMPOTENCY_TTL_SECONDS: ${IDEMPOTENCY_TTL_SECONDS:-300}
+      SEED_ON_START: ${SEED_ON_START:-false}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    command: >
+      sh -c "
+        echo 'Waiting for database to be ready...' &&
+        sleep 2 &&
+        alembic upgrade head &&
+        if [ \"$$SEED_ON_START\" = \"true\" ]; then
+          python -m scripts.seed;
+        fi &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+volumes:
+  postgres_data:
