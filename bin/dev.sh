@@ -55,21 +55,40 @@ case "$COMMAND" in
         curl -s http://localhost:8000/api/v1/health | jq . || echo "API not responding"
         ;;
     
+    packages)
+        echo "📦 Listing installed packages..."
+        docker compose exec api pip list
+        ;;
+    
+    check-packages)
+        echo "🔍 Checking packages from requirements.txt..."
+        if [ -n "$2" ]; then
+            docker compose exec api pip show "$2" || echo "❌ Package '$2' is not installed"
+        else
+            echo "Usage: bin/dev.sh check-packages <package-name>"
+            echo "Example: bin/dev.sh check-packages bcrypt"
+        fi
+        ;;
+    
     help|--help|-h)
         echo "Development helper script"
         echo ""
         echo "Usage: bin/dev.sh <command>"
         echo ""
         echo "Commands:"
-        echo "  start      - Start all services"
-        echo "  stop       - Stop all services"
-        echo "  restart    - Restart all services"
-        echo "  logs       - View logs (optionally specify service: api, db)"
-        echo "  shell      - Open shell in API container"
-        echo "  db-shell   - Open PostgreSQL shell"
-        echo "  clean      - Stop services and remove volumes"
-        echo "  status     - Show service status and health"
-        echo "  help       - Show this help message"
+        echo "  start          - Start all services"
+        echo "  stop           - Stop all services"
+        echo "  restart        - Restart all services"
+        echo "  logs           - View logs (optionally specify service: api, db)"
+        echo "  shell          - Open shell in API container"
+        echo "  db-shell       - Open PostgreSQL shell"
+        echo "  clean          - Stop services and remove volumes"
+        echo "  status         - Show service status and health"
+        echo "  packages       - List all installed Python packages"
+        echo "  check-packages <name> - Check if specific package is installed"
+        echo "  help           - Show this help message"
+        echo ""
+        echo "See also: bin/list-packages.sh for more package listing options"
         ;;
     
     *)

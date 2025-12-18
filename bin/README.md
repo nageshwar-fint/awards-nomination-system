@@ -43,7 +43,17 @@ Collection of shell scripts to simplify common development tasks.
   ./bin/dev.sh shell      # Open shell in API container
   ./bin/dev.sh db-shell   # Open PostgreSQL shell
   ./bin/dev.sh clean      # Stop and remove volumes
-  ./bin/dev.sh status     # Show service status
+  ./bin/dev.sh status        # Show service status
+  ./bin/dev.sh packages      # List installed packages
+  ./bin/dev.sh check-packages bcrypt  # Check specific package
+  ```
+
+- **`bin/list-packages.sh [options]`** - List installed packages
+  ```bash
+  ./bin/list-packages.sh              # List all packages
+  ./bin/list-packages.sh --requirements  # Check packages from requirements.txt
+  ./bin/list-packages.sh bcrypt       # Check specific package
+  ./bin/list-packages.sh --format json   # Output in JSON format
   ```
 
 ### Testing
