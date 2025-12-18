@@ -37,7 +37,6 @@ class CycleCreate(BaseSchema):
     name: str = Field(..., max_length=255)
     start_at: datetime
     end_at: datetime
-    created_by: UUID
 
 
 class CycleUpdate(BaseSchema):
@@ -50,6 +49,7 @@ class CycleUpdate(BaseSchema):
 class CycleRead(CycleCreate):
     id: UUID
     status: str
+    created_by: UUID
     created_at: datetime
     updated_at: datetime
 

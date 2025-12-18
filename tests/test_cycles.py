@@ -39,7 +39,6 @@ def test_create_cycle_unauthorized(client: TestClient):
         "name": "Test Cycle",
         "start_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
         "end_at": (datetime.now(timezone.utc) + timedelta(days=31)).isoformat(),
-        "created_by": str(uuid4()),
     }
     response = client.post("/api/v1/cycles", json=cycle_data)
     # HTTPBearer returns 403 when no Authorization header, but 401 when invalid token
@@ -52,7 +51,6 @@ def test_create_cycle(client: TestClient, test_team_lead_user, get_auth_headers)
         "name": "New Test Cycle",
         "start_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
         "end_at": (datetime.now(timezone.utc) + timedelta(days=31)).isoformat(),
-        "created_by": str(test_team_lead_user.id),
     }
     response = client.post(
         "/api/v1/cycles",
@@ -63,6 +61,7 @@ def test_create_cycle(client: TestClient, test_team_lead_user, get_auth_headers)
     data = response.json()
     assert data["name"] == cycle_data["name"]
     assert data["status"] == CycleStatus.DRAFT.value
+    assert data["created_by"] == str(test_team_lead_user.id)  # Should be set automatically
 
 
 def test_create_cycle_invalid_dates(client: TestClient, test_team_lead_user, get_auth_headers):
@@ -71,7 +70,6 @@ def test_create_cycle_invalid_dates(client: TestClient, test_team_lead_user, get
         "name": "Invalid Cycle",
         "start_at": (datetime.now(timezone.utc) + timedelta(days=31)).isoformat(),
         "end_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
-        "created_by": str(test_team_lead_user.id),
     }
     response = client.post(
         "/api/v1/cycles",
