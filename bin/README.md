@@ -18,12 +18,18 @@ Collection of shell scripts to simplify common development tasks.
 
 - **`bin/build.sh [service] [--no-cache]`** - Build Docker containers
   ```bash
-  ./bin/build.sh              # Build API service (default)
+  ./bin/build.sh              # Build API service (default, auto-detects requirements changes)
   ./bin/build.sh api          # Build API service
   ./bin/build.sh all          # Build all services
-  ./bin/build.sh api --no-cache  # Build without cache (ensures fresh dependencies)
+  ./bin/build.sh api --no-cache  # Force rebuild without cache (ensures fresh dependencies)
   ```
-  The `--no-cache` flag is useful when requirements.txt changes and you want to ensure all dependencies are freshly installed.
+  **Smart rebuild**: The script automatically detects if `requirements.txt` has changed and rebuilds without cache when needed. Use `--no-cache` to force a full rebuild.
+
+- **`bin/rebuild-requirements.sh [service]`** - Rebuild when requirements.txt changes
+  ```bash
+  ./bin/rebuild-requirements.sh api  # Check and rebuild if requirements changed
+  ```
+  This script compares the hash of `requirements.txt` with the last build and rebuilds if it has changed. Useful when you've added new packages.
 
 - **`bin/install-requirements.sh`** - Quick install requirements in running container
   ```bash

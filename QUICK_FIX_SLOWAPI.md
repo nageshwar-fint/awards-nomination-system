@@ -7,25 +7,22 @@ If you're seeing `ModuleNotFoundError: No module named 'slowapi'` on a new syste
 Run these commands on the system where you're getting the error:
 
 ```bash
-# 1. Stop containers
-docker compose down
-
-# 2. Rebuild API container without cache (ensures all dependencies are installed)
-docker compose build --no-cache api
-
-# 3. Start services
+# Option 1: Smart rebuild (automatically detects requirements.txt changes)
+./bin/build.sh api
 docker compose up -d
 
-# 4. Verify slowapi is installed
-docker compose exec api pip show slowapi
-```
-
-Or use the helper script:
-
-```bash
+# Option 2: Force rebuild without cache (guaranteed fresh install)
 ./bin/build.sh api --no-cache
 docker compose up -d
+
+# Option 3: Rebuild requirements layer only
+./bin/rebuild-requirements.sh api
+docker compose up -d
+
+# Verify slowapi is installed
 ./bin/list-packages.sh slowapi
+# OR
+docker compose exec api pip show slowapi
 ```
 
 ## Why This Happens

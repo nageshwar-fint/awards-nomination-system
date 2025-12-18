@@ -29,3 +29,4 @@ coverage.xml
 dist/
 build/
 *.egg-info/
+.requirements_hash
