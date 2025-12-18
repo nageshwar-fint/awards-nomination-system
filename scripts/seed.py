@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
-from app.db.session import DATABASE_URL
+from app.config import get_settings
 from app.models import SecurityQuestion, Team, User, UserRole
 
 
@@ -88,7 +88,9 @@ def create_admin_user(session: Session) -> User:
 
 def main() -> None:
     """Main seed function."""
-    engine = create_engine(os.getenv("DATABASE_URL", DATABASE_URL), future=True)
+    settings = get_settings()
+    database_url = os.getenv("DATABASE_URL", settings.database_url)
+    engine = create_engine(database_url, future=True)
     with Session(engine) as session:
         # Seed admin user (if enabled)
         seed_admin = os.getenv("SEED_ADMIN", "true").lower() == "true"
