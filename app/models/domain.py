@@ -100,6 +100,13 @@ class Criteria(TimestampedUUIDBase):
     weight: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # JSON configuration for question type and options
+    # Examples:
+    # - {"type": "text", "required": true}
+    # - {"type": "single_select", "options": ["Option 1", "Option 2"], "required": true}
+    # - {"type": "multi_select", "options": ["Option A", "Option B", "Option C"], "required": true}
+    # - {"type": "text_with_image", "required": false, "image_required": false}
+    config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     cycle: Mapped[NominationCycle] = relationship("NominationCycle", back_populates="criteria")
     scores: Mapped[list["NominationCriteriaScore"]] = relationship(
@@ -139,7 +146,15 @@ class NominationCriteriaScore(TimestampedUUIDBase):
 
     nomination_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("nominations.id"), nullable=False)
     criteria_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("criteria.id"), nullable=False)
-    score: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Legacy field - kept for backward compatibility, can be calculated from answer
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Answer data stored as JSON
+    # For text: {"text": "answer text"}
+    # For single_select: {"selected": "Option 1"}
+    # For multi_select: {"selected": ["Option A", "Option B"]}
+    # For text_with_image: {"text": "answer", "image_url": "https://..."}
+    answer: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Legacy comment field - kept for backward compatibility
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     nomination: Mapped[Nomination] = relationship("Nomination", back_populates="scores")
@@ -154,6 +169,8 @@ class Approval(TimestampedUUIDBase):
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     action: Mapped[ApprovalAction] = mapped_column(Enum(ApprovalAction, name="approval_action"), nullable=False)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Manager rating/score for the nomination (e.g., 1-10, 1-5, etc.)
+    rating: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     acted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
 
     nomination: Mapped[Nomination] = relationship("Nomination", back_populates="approvals")

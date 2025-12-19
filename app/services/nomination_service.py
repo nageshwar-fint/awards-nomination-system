@@ -89,12 +89,39 @@ class NominationService:
             crit_id = UUID(str(score["criteria_id"]))
             if crit_id not in criteria_ids:
                 raise ValueError("Criteria not active or not part of cycle")
+            
+            criteria = criteria_ids[crit_id]
+            answer_data = None
+            legacy_score = None
+            comment = score.get("comment")
+            
+            # Handle new flexible answer format
+            if "answer" in score and score["answer"]:
+                answer_dict = score["answer"]
+                if isinstance(answer_dict, dict):
+                    # Build answer JSON based on criteria config
+                    answer_data = {}
+                    
+                    if "text" in answer_dict:
+                        answer_data["text"] = answer_dict["text"]
+                    if "selected" in answer_dict:
+                        answer_data["selected"] = answer_dict["selected"]
+                    if "selected_list" in answer_dict:
+                        answer_data["selected_list"] = answer_dict["selected_list"]
+                    if "image_url" in answer_dict:
+                        answer_data["image_url"] = answer_dict["image_url"]
+            
+            # Handle legacy score format (backward compatibility)
+            if "score" in score and score["score"] is not None:
+                legacy_score = int(score["score"])
+            
             score_rows.append(
                 models.NominationCriteriaScore(
                     nomination_id=nomination.id,
                     criteria_id=crit_id,
-                    score=int(score["score"]),
-                    comment=score.get("comment"),
+                    score=legacy_score,
+                    answer=answer_data,
+                    comment=comment,
                 )
             )
         self.session.add_all(score_rows)

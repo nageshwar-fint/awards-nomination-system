@@ -13,14 +13,14 @@ class ApprovalService:
     def __init__(self, session: Session):
         self.session = session
 
-    def approve(self, nomination_id: UUID, actor_user_id: UUID, reason: str | None = None) -> models.Approval:
-        return self._act(nomination_id, actor_user_id, models.ApprovalAction.APPROVE, reason)
+    def approve(self, nomination_id: UUID, actor_user_id: UUID, reason: str | None = None, rating: float | None = None) -> models.Approval:
+        return self._act(nomination_id, actor_user_id, models.ApprovalAction.APPROVE, reason, rating)
 
-    def reject(self, nomination_id: UUID, actor_user_id: UUID, reason: str | None = None) -> models.Approval:
-        return self._act(nomination_id, actor_user_id, models.ApprovalAction.REJECT, reason)
+    def reject(self, nomination_id: UUID, actor_user_id: UUID, reason: str | None = None, rating: float | None = None) -> models.Approval:
+        return self._act(nomination_id, actor_user_id, models.ApprovalAction.REJECT, reason, rating)
 
     def _act(
-        self, nomination_id: UUID, actor_user_id: UUID, action: models.ApprovalAction, reason: str | None
+        self, nomination_id: UUID, actor_user_id: UUID, action: models.ApprovalAction, reason: str | None, rating: float | None = None
     ) -> models.Approval:
         nomination = self.session.get(models.Nomination, nomination_id)
         if not nomination:
@@ -39,6 +39,7 @@ class ApprovalService:
             actor_user_id=actor.id,
             action=action,
             reason=reason,
+            rating=rating,
             acted_at=datetime.now(timezone.utc),
         )
         self.session.add(approval)
@@ -53,6 +54,6 @@ class ApprovalService:
             f"nomination.{action.value.lower()}",
             "Nomination",
             nomination.id,
-            {"reason": reason},
+            {"reason": reason, "rating": rating},
         )
         return approval

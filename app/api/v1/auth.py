@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app import models
-from app.auth.jwt import JWTPayload
+from app.auth.jwt import JWTPayload, get_current_user
 from app.auth.password import hash_password, verify_password, validate_password_strength
 from app.config import get_settings
 from app.core.errors import AppError
@@ -277,3 +277,22 @@ def reset_password(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset password: {str(e)}"
         )
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+) -> MessageResponse:
+    """
+    Logout the current user.
+    
+    Since JWTs are stateless, this endpoint serves as a confirmation.
+    The client should delete the token from storage after receiving this response.
+    For immediate token invalidation, consider implementing token blacklisting.
+    
+    Returns success message confirming logout.
+    """
+    return MessageResponse(
+        message="Logged out successfully. Please delete the token from client storage."
+    )

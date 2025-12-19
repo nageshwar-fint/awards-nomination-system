@@ -416,6 +416,7 @@ async def approve_nomination(
             nomination_id=approval_data.nomination_id,
             actor_user_id=current_user.id,
             reason=approval_data.reason,
+            rating=approval_data.rating,
         )
         db.commit()
         return ApprovalRead.model_validate(approval)
@@ -443,6 +444,7 @@ async def reject_nomination(
             nomination_id=approval_data.nomination_id,
             actor_user_id=current_user.id,
             reason=approval_data.reason,
+            rating=approval_data.rating,
         )
         db.commit()
         return ApprovalRead.model_validate(approval)

@@ -62,11 +62,22 @@ class CycleRead(CycleCreate):
     updated_at: datetime
 
 
+class CriteriaConfig(BaseSchema):
+    """Criteria question configuration."""
+    type: str = Field(..., description="Question type: text, single_select, multi_select, text_with_image")
+    required: bool = Field(default=True, description="Whether this question is required")
+    # For select types: list of options
+    options: Optional[List[str]] = Field(None, description="Options for select types")
+    # For text_with_image: whether image is required
+    image_required: Optional[bool] = Field(None, description="Whether image is required (for text_with_image type)")
+
+
 class CriteriaCreate(BaseSchema):
     name: str = Field(..., max_length=255)
     weight: condecimal(max_digits=5, decimal_places=4)
     description: Optional[str] = None
     is_active: bool = True
+    config: Optional[CriteriaConfig] = Field(None, description="Question configuration (type, options, etc.)")
 
 
 class CriteriaUpdate(BaseSchema):
@@ -74,6 +85,7 @@ class CriteriaUpdate(BaseSchema):
     weight: Optional[condecimal(max_digits=5, decimal_places=4)] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    config: Optional[CriteriaConfig] = None
 
 
 class CriteriaRead(CriteriaCreate):
@@ -83,10 +95,25 @@ class CriteriaRead(CriteriaCreate):
     updated_at: datetime
 
 
+class NominationAnswerInput(BaseSchema):
+    """Answer to a criteria question."""
+    # For text type
+    text: Optional[str] = None
+    # For single_select type
+    selected: Optional[str] = None
+    # For multi_select type
+    selected_list: Optional[List[str]] = None
+    # For text_with_image type
+    image_url: Optional[str] = Field(None, description="URL to uploaded image")
+
+
 class NominationScoreInput(BaseSchema):
+    """Legacy schema - kept for backward compatibility."""
     criteria_id: UUID
-    score: conint(ge=1)
+    score: Optional[conint(ge=1)] = None  # Made optional, can be calculated from answer
     comment: Optional[str] = None
+    # New flexible answer format
+    answer: Optional[NominationAnswerInput] = Field(None, description="Answer to criteria question")
 
 
 class NominationCreate(BaseSchema):
@@ -112,6 +139,7 @@ class ApprovalActionRequest(BaseSchema):
     nomination_id: UUID
     actor_user_id: UUID
     reason: Optional[str] = None
+    rating: Optional[float] = Field(None, ge=0, le=10, description="Manager rating (0-10 scale)")
 
 
 class ApprovalRead(BaseSchema):
@@ -120,6 +148,7 @@ class ApprovalRead(BaseSchema):
     actor_user_id: UUID
     action: str
     reason: Optional[str]
+    rating: Optional[float] = Field(None, description="Manager rating (0-10 scale)")
     acted_at: datetime
     created_at: datetime
     updated_at: datetime
