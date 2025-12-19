@@ -12,8 +12,10 @@ class BaseSchema(BaseModel):
 class UserCreate(BaseSchema):
     name: str = Field(..., max_length=255)
     email: str = Field(..., max_length=255)
+    password: str = Field(..., min_length=8, description="Initial password for the user")
     role: str
     team_id: Optional[UUID] = None
+    status: Optional[str] = Field("ACTIVE", description="User status: ACTIVE or INACTIVE")
 
 
 class UserUpdate(BaseSchema):

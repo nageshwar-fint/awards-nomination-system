@@ -14,6 +14,72 @@ All endpoints require:
 
 ## Endpoints
 
+### Create User
+
+**POST** `/api/v1/admin/users`
+
+Create a new user account. HR can create users with any role.
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",                    // Required: string, max 255 chars
+  "email": "john@example.com",           // Required: string, must be unique
+  "password": "SecurePass123!",          // Required: string, min 8 chars, must meet strength requirements
+  "role": "EMPLOYEE",                    // Required: one of EMPLOYEE, TEAM_LEAD, MANAGER, HR
+  "team_id": "uuid-or-null",             // Optional: UUID or null
+  "status": "ACTIVE"                     // Optional: ACTIVE or INACTIVE (default: ACTIVE)
+}
+```
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character (!@#$%^&*)
+
+**Response:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "role": "EMPLOYEE",
+  "team_id": "uuid-or-null",
+  "status": "ACTIVE",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Errors:**
+- `400 Bad Request`: Invalid password, email already in use, invalid role, invalid status, or team not found
+
+**Validation:**
+- Email must be unique
+- Password must meet strength requirements
+- Role must be valid UserRole enum value
+- Status must be `ACTIVE` or `INACTIVE` (defaults to `ACTIVE`)
+- Team ID must exist in database (if provided)
+
+**Example:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/users" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "role": "TEAM_LEAD",
+    "team_id": "team-uuid",
+    "status": "ACTIVE"
+  }'
+```
+
+---
+
 ### List Users
 
 **GET** `/api/v1/admin/users`
@@ -176,7 +242,7 @@ curl -X DELETE "http://localhost:8000/api/v1/admin/users/123e4567-e89b-12d3-a456
 
 **POST** `/api/v1/admin/users/{user_id}/activate`
 
-Activate a user by setting status to ACTIVE.
+Activate a user by setting status to ACTIVE. Enables a user account that was previously deactivated.
 
 **Path Parameters:**
 - `user_id` (UUID): User ID
@@ -194,6 +260,36 @@ Activate a user by setting status to ACTIVE.
 **Example:**
 ```bash
 curl -X POST "http://localhost:8000/api/v1/admin/users/123e4567-e89b-12d3-a456-426614174000/activate" \
+  -H "Authorization: Bearer <token>"
+```
+
+---
+
+### Deactivate User
+
+**POST** `/api/v1/admin/users/{user_id}/deactivate`
+
+Deactivate a user by setting status to INACTIVE. Disables a user account. Deactivated users cannot log in.
+
+**Path Parameters:**
+- `user_id` (UUID): User ID
+
+**Response:** `200 OK`
+```json
+{
+  "message": "User user@example.com has been deactivated successfully"
+}
+```
+
+**Errors:**
+- `400 Bad Request`: Cannot deactivate your own account
+- `404 Not Found`: User doesn't exist
+
+**Note:** This is equivalent to the DELETE endpoint (soft delete) and can be reversed with the activate endpoint.
+
+**Example:**
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/users/123e4567-e89b-12d3-a456-426614174000/deactivate" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -267,7 +363,9 @@ All errors follow the standard error format:
 
 ## Notes
 
-1. **Password Management**: Password cannot be updated through admin API. Use the password reset flow (`/api/v1/auth/reset-password`).
+1. **User Creation**: HR can create users with any role and set their initial password. The password must meet strength requirements.
+
+2. **Password Management**: Password cannot be updated through the update endpoint. Use the password reset flow (`/api/v1/auth/reset-password`) or create a new user with the desired password.
 
 2. **Soft Delete**: The delete endpoint performs a soft delete (sets status to INACTIVE) rather than hard deletion to preserve data integrity and audit trails.
 

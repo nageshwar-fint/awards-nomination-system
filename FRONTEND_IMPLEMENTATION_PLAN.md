@@ -50,7 +50,11 @@ The system has 4 roles with different permissions:
 - **CycleForm**: Form to create/edit cycles
 - **CriteriaManagement**: Create, update, delete criteria with config
 - **CriteriaConfigForm**: Form to configure question types (text, select, multi-select, image)
-- **UserManagement**: Admin panel for user management (from Admin API)
+- **UserManagement**: Full admin panel for user management (create, update, delete, activate/deactivate)
+- **UserCreateForm**: Form to create new users with password
+- **UserEditForm**: Form to edit user details (name, email, role, team, status)
+- **UserListTable**: Table with filters (role, status, team, search)
+- **UserActions**: Buttons for activate/deactivate/delete actions
 - **CycleFinalizeButton**: Button to finalize cycles
 
 ### 3. Flexible Criteria Components
@@ -173,10 +177,12 @@ The system has 4 roles with different permissions:
     - Validate criteria weights
 
 13. **User management (HR only)**
-    - User list with filters
+    - User list with filters (role, status, team, search)
+    - Create new user with password
     - User detail view
-    - Update user (role, status, team)
-    - Activate/deactivate users
+    - Update user (name, email, role, status, team)
+    - Activate/deactivate users (separate endpoints)
+    - Delete user (soft delete via deactivate)
 
 ## Data Flow Examples
 
@@ -296,6 +302,38 @@ const userRole = getUserRole(); // From JWT token
 - Store image URL in answer
 - Display images in nomination views
 
+## Data Flow Examples
+
+### HR Creating a User
+
+```
+1. HR navigates to user management
+2. Clicks "Create User" button
+3. Fills user creation form:
+   - Name (required)
+   - Email (required, validated for uniqueness)
+   - Password (required, validated for strength)
+   - Role (required: EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+   - Team (optional dropdown)
+   - Status (default: ACTIVE)
+4. Form validates password strength
+5. POST /api/v1/admin/users
+6. User appears in list with ACTIVE status
+```
+
+### HR Managing Users
+
+```
+1. HR views user list with filters
+2. Can filter by role, status, team, or search
+3. For each user:
+   - View details
+   - Edit (name, email, role, team, status)
+   - Activate/Deactivate toggle
+   - Delete (soft delete via deactivate)
+4. Changes are immediately reflected
+```
+
 ## Testing Checklist
 
 - [ ] Login/register flows
@@ -306,7 +344,10 @@ const userRole = getUserRole(); // From JWT token
 - [ ] Approval with ratings (Manager/HR)
 - [ ] Rankings computation (Manager/HR)
 - [ ] Cycle finalization (HR only)
-- [ ] User management (HR only)
+- [ ] User creation (HR only)
+- [ ] User update (name, email, role, status, team)
+- [ ] User activation/deactivation (HR only)
+- [ ] User deletion (soft delete via deactivate)
 - [ ] Error handling and validation
 - [ ] Image upload functionality
 

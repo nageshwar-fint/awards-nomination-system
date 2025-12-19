@@ -13,10 +13,101 @@ from app import models
 from app.auth.rbac import RequireHR
 from app.core.errors import AppError
 from app.db.session import get_session
+from app.auth.password import hash_password, validate_password_strength
 from app.models.domain import User, UserRole
-from app.schemas.base import MessageResponse, UserRead, UserUpdate
+from app.schemas.base import MessageResponse, UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.post("/users", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+def create_user(
+    user_data: UserCreate,
+    current_user: User = Depends(RequireHR),
+    db: Session = Depends(get_session),
+) -> UserRead:
+    """
+    Create a new user.
+    
+    Requires HR role.
+    
+    - Email must be unique
+    - Password must meet strength requirements
+    - Role must be a valid UserRole enum value
+    - Status defaults to ACTIVE if not provided
+    - Team must exist if team_id is provided
+    """
+    from uuid import uuid4
+    
+    # Validate password strength
+    is_valid, error_message = validate_password_strength(user_data.password)
+    if not is_valid:
+        raise AppError(
+            error_message or "Invalid password",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Check if email already exists
+    existing_user = db.scalar(select(User).where(User.email == user_data.email))
+    if existing_user:
+        raise AppError(
+            "Email already in use",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate role
+    try:
+        role_enum = UserRole[user_data.role.upper()]
+    except KeyError:
+        raise AppError(
+            f"Invalid role. Must be one of: {[r.name for r in UserRole]}",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate status
+    status_value = (user_data.status or "ACTIVE").upper()
+    if status_value not in ("ACTIVE", "INACTIVE"):
+        raise AppError(
+            "Invalid status. Must be ACTIVE or INACTIVE",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Validate team_id if provided
+    if user_data.team_id:
+        team = db.get(models.Team, user_data.team_id)
+        if not team:
+            raise AppError(
+                "Team not found",
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+    
+    try:
+        # Hash password
+        password_hash = hash_password(user_data.password)
+        
+        # Create user
+        user = User(
+            id=uuid4(),
+            name=user_data.name,
+            email=user_data.email,
+            password_hash=password_hash,
+            role=role_enum,
+            team_id=user_data.team_id,
+            status=status_value,
+        )
+        
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+        return UserRead.model_validate(user)
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create user: {str(e)}"
+        )
 
 
 @router.get("/users", response_model=List[UserRead])
@@ -184,6 +275,8 @@ def delete_user(
     
     Note: This performs a soft delete by setting the user status to INACTIVE
     rather than actually deleting the record, to preserve data integrity.
+    
+    To permanently delete, contact database administrator.
     """
     user = db.get(User, user_id)
     if not user:
@@ -223,6 +316,8 @@ def activate_user(
     Activate a user (set status to ACTIVE).
     
     Requires HR role.
+    
+    Enables a user account that was previously deactivated.
     """
     user = db.get(User, user_id)
     if not user:
@@ -241,4 +336,45 @@ def activate_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to activate user: {str(e)}"
+        )
+
+
+@router.post("/users/{user_id}/deactivate", response_model=MessageResponse)
+def deactivate_user(
+    user_id: UUID,
+    current_user: User = Depends(RequireHR),
+    db: Session = Depends(get_session),
+) -> MessageResponse:
+    """
+    Deactivate a user (set status to INACTIVE).
+    
+    Requires HR role.
+    
+    Disables a user account. Deactivated users cannot log in.
+    This is equivalent to soft delete and can be reversed with activate endpoint.
+    """
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Prevent deactivating yourself
+    if user.id == current_user.id:
+        raise AppError(
+            "Cannot deactivate your own account",
+            status_code=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user.status = "INACTIVE"
+    
+    try:
+        db.commit()
+        return MessageResponse(message=f"User {user.email} has been deactivated successfully")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to deactivate user: {str(e)}"
         )
