@@ -26,8 +26,12 @@ class UserUpdate(BaseSchema):
     status: Optional[str] = None
 
 
-class UserRead(UserCreate):
+class UserRead(BaseSchema):
     id: UUID
+    name: str = Field(..., max_length=255)
+    email: str = Field(..., max_length=255)
+    role: str
+    team_id: Optional[UUID] = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -76,7 +80,7 @@ class CriteriaConfig(BaseSchema):
 
 class CriteriaCreate(BaseSchema):
     name: str = Field(..., max_length=255)
-    weight: condecimal(max_digits=5, decimal_places=4)
+    weight: condecimal(max_digits=5, decimal_places=2)
     description: Optional[str] = None
     is_active: bool = True
     config: Optional[dict] = Field(None, description="Question configuration (type, options, etc.)")

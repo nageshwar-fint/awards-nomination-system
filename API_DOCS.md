@@ -485,7 +485,7 @@ See [FLEXIBLE_CRITERIA_SYSTEM.md](FLEXIBLE_CRITERIA_SYSTEM.md) for detailed conf
 ]
 ```
 
-**Note:** Total weight of all active criteria should not exceed 1.0
+**Note:** Total weight of all active criteria should not exceed 10.0
 
 ### Update Criteria
 
@@ -514,7 +514,7 @@ Update criteria. Weight/name/config can only be updated for DRAFT cycles.
 
 **Errors:**
 - `400`: Cannot update weight/name in non-DRAFT cycles
-- `400`: Criteria weights exceed 1.0 for cycle
+- `400`: Criteria weights exceed 10.0 for cycle
 
 ### Delete Criteria
 

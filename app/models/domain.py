@@ -97,7 +97,7 @@ class Criteria(TimestampedUUIDBase):
 
     cycle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("nomination_cycles.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    weight: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)
+    weight: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     # JSON configuration for question type and options

@@ -94,10 +94,10 @@ def test_add_criteria_forbidden_non_hr(client: TestClient, test_draft_cycle, tes
 
 
 def test_add_criteria_weight_exceeds_one(client: TestClient, test_draft_cycle, test_hr_user, get_auth_headers):
-    """Test adding criteria that exceeds total weight of 1.0."""
+    """Test adding criteria that exceeds total weight of 10.0."""
     criteria_data = [{
         "name": "Heavy Criteria",
-        "weight": 1.5,  # Exceeds 1.0
+        "weight": 10.5,  # Exceeds 10.0
     }]
     response = client.post(
         f"/api/v1/cycles/{test_draft_cycle.id}/criteria",

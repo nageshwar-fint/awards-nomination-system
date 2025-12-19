@@ -43,8 +43,8 @@ class NominationService:
             items.append(crit)
         self.session.flush()
         total_weight = self._criteria_weight_sum(cycle.id)
-        if total_weight > Decimal("1.0000"):
-            raise ValueError("Criteria weights exceed 1.0 for cycle")
+        if total_weight > Decimal("10.00"):
+            raise ValueError("Criteria weights exceed 10.0 for cycle")
         record_audit(self.session, cycle.created_by, "criteria.add", "NominationCycle", cycle.id, {"count": len(items)})
         return items
 

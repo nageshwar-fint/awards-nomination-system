@@ -24,6 +24,7 @@ from app.schemas.base import (
     NominationCreate,
     NominationRead,
     RankingRead,
+    UserRead,
 )
 from app.services.approval_service import ApprovalService
 from app.services.nomination_service import NominationService
@@ -98,17 +99,35 @@ async def update_cycle(
     current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> CycleRead:
-    """Update a nomination cycle. HR only. Only DRAFT cycles can be updated."""
+    """Update a nomination cycle. HR only.
+    - DRAFT cycles: can update all fields (name, dates, status)
+    - OPEN cycles: can update status and dates only
+    - CLOSED cycles: can update status only
+    - FINALIZED cycles: cannot be updated
+    """
     cycle = db.get(models.NominationCycle, cycle_id)
     if not cycle:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cycle not found")
 
-    # Only allow updates to DRAFT cycles
-    if cycle.status != models.CycleStatus.DRAFT:
-        raise AppError("Only DRAFT cycles can be updated", status_code=status.HTTP_400_BAD_REQUEST)
+    # FINALIZED cycles cannot be updated
+    if cycle.status == models.CycleStatus.FINALIZED:
+        raise AppError("FINALIZED cycles cannot be updated", status_code=status.HTTP_400_BAD_REQUEST)
 
     # Update fields if provided
     update_data = cycle_update.model_dump(exclude_unset=True)
+    
+    # For non-DRAFT cycles, only allow status and date updates
+    if cycle.status != models.CycleStatus.DRAFT:
+        allowed_fields = {"status", "start_at", "end_at"}
+        provided_fields = set(update_data.keys())
+        disallowed_fields = provided_fields - allowed_fields
+        if disallowed_fields:
+            raise AppError(
+                f"Only status and dates can be updated for {cycle.status} cycles. "
+                f"Disallowed fields: {', '.join(disallowed_fields)}",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
     if "status" in update_data:
         try:
             cycle.status = models.CycleStatus[update_data["status"].upper()]
@@ -258,16 +277,16 @@ async def update_criteria(
     if "config" in update_data:
         criteria.config = update_data["config"]
 
-    # If weight changed, validate total weight doesn't exceed 1.0
+    # If weight changed, validate total weight doesn't exceed 10.0
     if "weight" in update_data:
         from app.services.nomination_service import NominationService
         service = NominationService(db)
         try:
-            # This will raise if weights exceed 1.0
+            # This will raise if weights exceed 10.0
             total_weight = service._criteria_weight_sum(criteria.cycle_id)
-            if total_weight > 1.0:
+            if total_weight > 10.0:
                 db.rollback()
-                raise AppError("Criteria weights exceed 1.0 for cycle", status_code=status.HTTP_400_BAD_REQUEST)
+                raise AppError("Criteria weights exceed 10.0 for cycle", status_code=status.HTTP_400_BAD_REQUEST)
         except AttributeError:
             # If method doesn't exist, skip validation (shouldn't happen)
             pass
@@ -307,6 +326,55 @@ async def delete_criteria(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# Users endpoint for nominations (TEAM_LEAD+ can list users to nominate)
+@router.get("/users", response_model=List[UserRead])
+async def list_users_for_nominations(
+    status_filter: Optional[str] = Query("ACTIVE", description="Filter by status (ACTIVE, INACTIVE)"),
+    search: Optional[str] = Query(None, description="Search by name or email"),
+    current_user: User = Depends(RequireTeamLead),
+    db: Session = Depends(get_session),
+) -> List[UserRead]:
+    """
+    List users for nomination purposes.
+    
+    Allows TEAM_LEAD, MANAGER, and HR to list users so they can select nominees.
+    Only returns EMPLOYEE role users (cannot nominate HR, MANAGER, or TEAM_LEAD).
+    Only returns active users by default for security.
+    """
+    from app.models.domain import UserRole
+    
+    stmt = select(User)
+    
+    # Only show EMPLOYEE role users (cannot nominate other roles)
+    stmt = stmt.where(User.role == UserRole.EMPLOYEE)
+    
+    # Filter by status (default to ACTIVE only)
+    if status_filter:
+        stmt = stmt.where(User.status == status_filter.upper())
+    else:
+        stmt = stmt.where(User.status == "ACTIVE")
+    
+    # Search by name or email if provided
+    if search:
+        search_pattern = f"%{search}%"
+        stmt = stmt.where(
+            (User.name.ilike(search_pattern)) | (User.email.ilike(search_pattern))
+        )
+    
+    stmt = stmt.order_by(User.name.asc())
+    users = db.scalars(stmt).all()
+    
+    # Deduplicate users by email (in case of duplicates)
+    seen_emails = set()
+    unique_users = []
+    for user in users:
+        if user.email not in seen_emails:
+            seen_emails.add(user.email)
+            unique_users.append(user)
+    
+    return [UserRead.model_validate(user) for user in unique_users]
 
 
 # Nominations endpoints
@@ -430,6 +498,9 @@ async def approve_nomination(
         raise AppError(str(e), status_code=status.HTTP_403_FORBIDDEN)
     except Exception as e:
         db.rollback()
+        import traceback
+        print(f"Error approving nomination: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -458,6 +529,9 @@ async def reject_nomination(
         raise AppError(str(e), status_code=status.HTTP_403_FORBIDDEN)
     except Exception as e:
         db.rollback()
+        import traceback
+        print(f"Error rejecting nomination: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
