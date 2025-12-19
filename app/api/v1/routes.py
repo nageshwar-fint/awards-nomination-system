@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.auth.jwt import get_current_user, get_optional_user
-from app.auth.rbac import RequireManager, RequireTeamLead, get_current_user_id
+from app.auth.rbac import RequireManager, RequireTeamLead, RequireHR, get_current_user_id
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.domain import User
@@ -69,10 +69,10 @@ async def get_cycle(
 @router.post("/cycles", response_model=CycleRead, status_code=status.HTTP_201_CREATED)
 async def create_cycle(
     cycle_data: CycleCreate,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> CycleRead:
-    """Create a new nomination cycle."""
+    """Create a new nomination cycle. HR only."""
     service = NominationService(db)
     try:
         cycle = service.create_cycle(
@@ -95,10 +95,10 @@ async def create_cycle(
 async def update_cycle(
     cycle_id: UUID,
     cycle_update: CycleUpdate,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> CycleRead:
-    """Update a nomination cycle. Only DRAFT cycles can be updated."""
+    """Update a nomination cycle. HR only. Only DRAFT cycles can be updated."""
     cycle = db.get(models.NominationCycle, cycle_id)
     if not cycle:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cycle not found")
@@ -141,10 +141,10 @@ async def update_cycle(
 @router.delete("/cycles/{cycle_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_cycle(
     cycle_id: UUID,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> None:
-    """Delete a nomination cycle. Only DRAFT cycles with no nominations can be deleted."""
+    """Delete a nomination cycle. HR only. Only DRAFT cycles with no nominations can be deleted."""
     cycle = db.get(models.NominationCycle, cycle_id)
     if not cycle:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cycle not found")
@@ -207,10 +207,10 @@ async def get_criteria(
 async def add_criteria_to_cycle(
     cycle_id: UUID,
     criteria_list: List[CriteriaCreate],
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> List[CriteriaRead]:
-    """Add criteria to a nomination cycle."""
+    """Add criteria to a nomination cycle. HR only."""
     service = NominationService(db)
     try:
         criteria_data = [c.model_dump() for c in criteria_list]
@@ -229,10 +229,10 @@ async def add_criteria_to_cycle(
 async def update_criteria(
     criteria_id: UUID,
     criteria_update: CriteriaUpdate,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> CriteriaRead:
-    """Update criteria. Only allowed if no nominations have been submitted for the cycle."""
+    """Update criteria. HR only. Only allowed if no nominations have been submitted for the cycle."""
     criteria = db.get(models.Criteria, criteria_id)
     if not criteria:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Criteria not found")
@@ -284,10 +284,10 @@ async def update_criteria(
 @router.delete("/criteria/{criteria_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_criteria(
     criteria_id: UUID,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> None:
-    """Delete criteria. Only allowed if no nominations reference it."""
+    """Delete criteria. HR only. Only allowed if no nominations reference it."""
     criteria = db.get(models.Criteria, criteria_id)
     if not criteria:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Criteria not found")
@@ -509,10 +509,10 @@ async def compute_rankings(
 @router.post("/cycles/{cycle_id}/finalize", status_code=status.HTTP_200_OK)
 async def finalize_cycle(
     cycle_id: UUID,
-    current_user: User = Depends(RequireManager),
+    current_user: User = Depends(RequireHR),
     db: Session = Depends(get_session),
 ) -> dict:
-    """Finalize a cycle (compute rankings and snapshot history)."""
+    """Finalize a cycle (compute rankings and snapshot history). HR only."""
     service = RankingService(db)
     try:
         service.finalize_cycle(cycle_id=cycle_id)

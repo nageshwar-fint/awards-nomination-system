@@ -27,12 +27,11 @@ The system has **4 user roles** with hierarchical permissions:
 
 ### 2. **TEAM_LEAD** 👨‍💼
 - **Mid-level permission**
-- **Primary Purpose**: Manage nomination cycles and submit nominations
+- **Primary Purpose**: Submit nominations for team members
 - **Can**: 
-  - Create and manage nomination cycles (DRAFT status only)
-  - Define criteria for cycles
   - Submit nominations for team members
-- **Cannot**: Approve nominations or finalize cycles
+  - View cycles, nominations, and rankings
+- **Cannot**: Create/manage cycles, manage criteria, approve nominations, or finalize cycles
 
 ### 3. **MANAGER** 👔
 - **High-level permission**
@@ -46,8 +45,12 @@ The system has **4 user roles** with hierarchical permissions:
 
 ### 4. **HR** 👥
 - **Highest permission level**
-- **Primary Purpose**: Full system access for HR operations
-- **Can**: Everything a MANAGER can do (full access)
+- **Primary Purpose**: Full system administration and management
+- **Can**: 
+  - Create, update, delete, and finalize nomination cycles
+  - Create, update, and delete criteria with flexible configurations
+  - Everything a MANAGER can do (approve nominations, compute rankings)
+  - Manage users (via Admin API)
 - **Cannot**: None (full administrative access)
 
 ---
@@ -59,15 +62,15 @@ The system has **4 user roles** with hierarchical permissions:
 | **View Cycles** | ✅ | ✅ | ✅ | ✅ |
 | **View Nominations** | ✅ | ✅ | ✅ | ✅ |
 | **View Rankings** | ✅ | ✅ | ✅ | ✅ |
-| **Create Cycles** | ❌ | ✅ | ✅ | ✅ |
-| **Update Cycles** (DRAFT only) | ❌ | ✅ | ✅ | ✅ |
-| **Delete Cycles** (DRAFT only) | ❌ | ✅ | ✅ | ✅ |
-| **Manage Criteria** | ❌ | ✅ | ✅ | ✅ |
+| **Create Cycles** | ❌ | ❌ | ❌ | ✅ |
+| **Update Cycles** (DRAFT only) | ❌ | ❌ | ❌ | ✅ |
+| **Delete Cycles** (DRAFT only) | ❌ | ❌ | ❌ | ✅ |
+| **Close/Finalize Cycles** | ❌ | ❌ | ❌ | ✅ |
+| **Manage Criteria** (Create/Update/Delete) | ❌ | ❌ | ❌ | ✅ |
 | **Submit Nominations** | ❌ | ✅ | ✅ | ✅ |
 | **Approve Nominations** | ❌ | ❌ | ✅ | ✅ |
 | **Reject Nominations** | ❌ | ❌ | ✅ | ✅ |
 | **Compute Rankings** | ❌ | ❌ | ✅ | ✅ |
-| **Finalize Cycles** | ❌ | ❌ | ✅ | ✅ |
 
 ---
 
@@ -100,9 +103,25 @@ GET /api/v1/cycles/{cycle_id}/rankings
 ### TEAM_LEAD Workflow
 
 **Primary Responsibilities:**
-1. **Create Nomination Cycles**
-2. **Define Evaluation Criteria**
-3. **Submit Nominations**
+1. **Submit Nominations** for team members
+
+**Note**: Cycle creation and criteria management are now HR-only functions. Team Leads focus on submitting nominations.
+
+**Step-by-Step Workflow:**
+
+#### 1. Submit a Nomination
+
+See the "Submit Nomination" section below.
+
+---
+
+### HR Workflow
+
+**Primary Responsibilities:**
+1. **Create and Manage Nomination Cycles**
+2. **Define and Configure Evaluation Criteria** (with flexible question types)
+3. **Finalize Cycles and Announce Results**
+4. **Manage Users** (via Admin API)
 
 **Step-by-Step Workflow:**
 
@@ -129,11 +148,11 @@ const createCycle = async (cycleData: {
 
 **Important Notes:**
 - Cycle starts in `DRAFT` status
-- Only TEAM_LEAD+ can create cycles
+- **HR only** can create cycles
 - `created_by` is automatically set from the authenticated user
 - Cannot set dates in the past
 
-#### 2. Define Criteria for the Cycle
+#### 2. Define Criteria for the Cycle (with Flexible Configuration)
 
 ```typescript
 // POST /api/v1/cycles/{cycle_id}/criteria
@@ -142,7 +161,13 @@ const addCriteria = async (cycleId: string, criteria: {
   weight: number;      // 0.0000 to 1.0000 (should sum to ~1.0 across all criteria)
   description?: string;
   is_active?: boolean; // default: true
-}) => {
+  config?: {           // NEW: Flexible question configuration
+    type: "text" | "single_select" | "multi_select" | "text_with_image";
+    required?: boolean;
+    options?: string[];      // For select types
+    image_required?: boolean; // For text_with_image type
+  };
+}[]) => {
   const response = await fetch(`${API_BASE_URL}/cycles/${cycleId}/criteria`, {
     method: 'POST',
     headers: {
@@ -156,9 +181,11 @@ const addCriteria = async (cycleId: string, criteria: {
 ```
 
 **Important Notes:**
+- **HR only** can manage criteria
 - Criteria can only be added to `DRAFT` cycles
 - Weights typically sum to 1.0 (but API doesn't enforce this)
 - Criteria can be updated or deleted if not yet used in nominations
+- See `FLEXIBLE_CRITERIA_SYSTEM.md` for detailed configuration options
 
 #### 3. Update Cycle Status to OPEN
 
@@ -178,11 +205,15 @@ const openCycle = async (cycleId: string) => {
 ```
 
 **Important Notes:**
+- **HR only** can update cycles
 - Can only update `DRAFT` cycles
-- Once `OPEN`, cycles cannot be edited
-- Only dates and status can be updated
+- Once `OPEN`, cycles cannot be edited (only dates and status can be updated)
 
-#### 4. Submit Nominations
+---
+
+### Submit Nomination (Team Lead, Manager, HR)
+
+**Note**: This section applies to Team Leads, Managers, and HR. They all submit nominations the same way.
 
 ```typescript
 // POST /api/v1/nominations
@@ -191,7 +222,15 @@ const submitNomination = async (nomination: {
   nominee_user_id: string;
   scores: Array<{
     criteria_id: string;
-    score: number;      // 1-10 typically
+    // Flexible answer format (based on criteria config type)
+    answer?: {
+      text?: string;              // For text type
+      selected?: string;          // For single_select type
+      selected_list?: string[];   // For multi_select type
+      image_url?: string;         // For text_with_image type
+    };
+    // Legacy format (backward compatibility)
+    score?: number;      // 1-10 typically
     comment?: string;
   }>;
 }) => {
@@ -210,24 +249,26 @@ const submitNomination = async (nomination: {
 **Important Notes:**
 - `submitted_by` is automatically set from authenticated user
 - Can only submit to `OPEN` cycles
-- Must provide scores for all active criteria
+- Must provide answers for all active criteria (based on criteria config type)
 - Cycle must be within `start_at` and `end_at` date range
+- Answers should match the criteria question type (text, select, etc.)
 
 **What TEAM_LEAD Cannot Do:**
+- ❌ Create/update/delete cycles
+- ❌ Create/update/delete criteria
 - ❌ Approve/reject nominations
 - ❌ Compute rankings
 - ❌ Finalize cycles
-- ❌ Update cycles that are not in `DRAFT` status
 
 ---
 
 ### MANAGER Workflow
 
 **Primary Responsibilities:**
-1. **Everything TEAM_LEAD can do**
-2. **Approve/Reject Nominations**
+1. **Submit Nominations** (same as Team Lead)
+2. **Approve/Reject Nominations** (with optional ratings)
 3. **Compute Rankings**
-4. **Finalize Cycles**
+4. **Cannot**: Create/manage cycles, manage criteria, or finalize cycles (HR only)
 
 #### 1. Review Pending Nominations
 
@@ -245,11 +286,15 @@ const getPendingNominations = async (cycleId?: string) => {
 };
 ```
 
-#### 2. Approve a Nomination
+#### 2. Approve a Nomination (with Optional Rating)
 
 ```typescript
 // POST /api/v1/approvals/approve
-const approveNomination = async (nominationId: string, reason?: string) => {
+const approveNomination = async (
+  nominationId: string, 
+  reason?: string,
+  rating?: number // 0-10 scale, optional
+) => {
   const response = await fetch(`${API_BASE_URL}/approvals/approve`, {
     method: 'POST',
     headers: {
@@ -258,18 +303,23 @@ const approveNomination = async (nominationId: string, reason?: string) => {
     },
     body: JSON.stringify({
       nomination_id: nominationId,
-      reason: reason // Optional
+      reason: reason, // Optional
+      rating: rating  // Optional: 0-10 scale
     })
   });
   return response.json();
 };
 ```
 
-#### 3. Reject a Nomination
+#### 3. Reject a Nomination (with Optional Rating)
 
 ```typescript
 // POST /api/v1/approvals/reject
-const rejectNomination = async (nominationId: string, reason?: string) => {
+const rejectNomination = async (
+  nominationId: string, 
+  reason?: string,
+  rating?: number // 0-10 scale, optional
+) => {
   const response = await fetch(`${API_BASE_URL}/approvals/reject`, {
     method: 'POST',
     headers: {
@@ -278,7 +328,8 @@ const rejectNomination = async (nominationId: string, reason?: string) => {
     },
     body: JSON.stringify({
       nomination_id: nominationId,
-      reason: reason // Optional but recommended
+      reason: reason, // Optional but recommended
+      rating: rating  // Optional: 0-10 scale
     })
   });
   return response.json();
@@ -289,6 +340,7 @@ const rejectNomination = async (nominationId: string, reason?: string) => {
 - Only `PENDING` nominations can be approved/rejected
 - `actor_user_id` is automatically set from authenticated user
 - Reason is optional but recommended for audit trail
+- Rating (0-10) is optional and can be used for evaluation purposes
 
 #### 4. Compute Rankings (After Cycle Closes)
 
@@ -312,7 +364,29 @@ const computeRankings = async (cycleId: string) => {
 - Can be recomputed multiple times (overwrites previous rankings)
 - Cycle should be in `CLOSED` status (or at least past `end_at`)
 
-#### 5. Finalize a Cycle
+#### 5. Compute Rankings (Optional - Manager can do this)
+
+```typescript
+// POST /api/v1/cycles/{cycle_id}/rankings/compute
+const computeRankings = async (cycleId: string) => {
+  const response = await fetch(`${API_BASE_URL}/cycles/${cycleId}/rankings/compute`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  return response.json();
+};
+```
+
+**Note:** Managers can compute rankings, but HR must finalize the cycle.
+
+---
+
+### HR Workflow (Continued)
+
+#### 5. Finalize a Cycle (HR Only)
 
 ```typescript
 // POST /api/v1/cycles/{cycle_id}/finalize
@@ -333,16 +407,20 @@ const finalizeCycle = async (cycleId: string) => {
 - Creates snapshots of nominations and rankings
 - Cycle becomes read-only after finalization
 - Should only be done after all approvals and rankings are complete
+- **HR only** - Managers cannot finalize cycles
 
 ---
 
 ### HR Workflow
 
 **Primary Responsibilities:**
-- **Everything MANAGER can do**
-- Additional oversight and administrative tasks
+1. **Create and Manage Nomination Cycles** (Create, Update, Delete, Finalize)
+2. **Define and Configure Criteria** (with flexible question types)
+3. **Approve/Reject Nominations** (same as Manager)
+4. **Compute Rankings** (same as Manager)
+5. **Manage Users** (via Admin API)
 
-**Note:** Currently, HR has the same permissions as MANAGER. Future enhancements may add HR-specific features like user management, role assignment, or system-wide reports.
+**See "HR Workflow" section above for detailed cycle and criteria management steps.**
 
 ---
 
@@ -363,10 +441,10 @@ DRAFT → OPEN → CLOSED → FINALIZED
 
 | Status | Description | Who Can Modify | Key Restrictions |
 |--------|-------------|----------------|------------------|
-| **DRAFT** | Initial state after creation | TEAM_LEAD+ | Can be edited, deleted, criteria can be added |
-| **OPEN** | Cycle is accepting nominations | None | Can only change dates, no edits to criteria |
-| **CLOSED** | Cycle is past end date | None | Read-only, no nominations accepted |
-| **FINALIZED** | Cycle is complete and locked | None | Read-only, historical snapshot created |
+| **DRAFT** | Initial state after creation | HR only | Can be edited, deleted, criteria can be added |
+| **OPEN** | Cycle is accepting nominations | HR only | Can only change dates, no edits to criteria |
+| **CLOSED** | Cycle is past end date | HR only | Read-only, no nominations accepted |
+| **FINALIZED** | Cycle is complete and locked | HR only | Read-only, historical snapshot created |
 
 ### Status Transition Rules
 
@@ -381,7 +459,7 @@ DRAFT → OPEN → CLOSED → FINALIZED
 
 3. **CLOSED → FINALIZED**:
    - Only via `/finalize` endpoint
-   - Requires MANAGER+ role
+   - Requires HR role
    - Creates historical snapshots
 
 **Frontend Implementation:**

@@ -63,6 +63,12 @@ export interface Criteria {
   weight: number;
   description?: string;
   is_active: boolean;
+  config?: {              // NEW: Flexible question configuration
+    type: "text" | "single_select" | "multi_select" | "text_with_image";
+    required?: boolean;
+    options?: string[];    // For select types
+    image_required?: boolean; // For text_with_image type
+  };
   created_at: string;
   updated_at: string;
 }
@@ -79,10 +85,18 @@ export interface Nomination {
   updated_at: string;
 }
 
+export interface NominationAnswerInput {
+  text?: string;              // For text type
+  selected?: string;          // For single_select type
+  selected_list?: string[];   // For multi_select type
+  image_url?: string;         // For text_with_image type
+}
+
 export interface NominationScoreInput {
   criteria_id: string;
-  score: number; // typically 1-10
-  comment?: string;
+  score?: number;             // Legacy: optional, can be calculated from answer
+  comment?: string;           // Legacy: optional comment
+  answer?: NominationAnswerInput; // NEW: Flexible answer format
 }
 
 export interface Approval {
@@ -91,6 +105,7 @@ export interface Approval {
   actor_user_id: string;
   action: 'APPROVE' | 'REJECT';
   reason?: string;
+  rating?: number;            // NEW: Manager rating (0-10 scale)
   acted_at: string;
   created_at: string;
   updated_at: string;
@@ -138,27 +153,33 @@ const nominations: Nomination[] = await apiRequest(
 ### Creating Resources
 
 ```typescript
-// Create cycle
+// Create cycle (HR only)
 const newCycle: Cycle = await apiRequest('/cycles', {
   method: 'POST',
   body: JSON.stringify({
     name: 'Q1 2024 Awards',
     start_at: '2024-01-01T00:00:00Z',
-    end_at: '2024-03-31T23:59:59Z',
-    created_by: 'user-id' // ignored by API
+    end_at: '2024-03-31T23:59:59Z'
+    // created_by is automatically set from authenticated user
   })
 });
 
-// Submit nomination
+// Submit nomination (Team Lead, Manager, HR)
 const nomination: Nomination = await apiRequest('/nominations', {
   method: 'POST',
   body: JSON.stringify({
     cycle_id: cycleId,
     nominee_user_id: nomineeId,
-    submitted_by: submitterId, // ignored by API
+    // submitted_by is automatically set from authenticated user
     scores: [
-      { criteria_id: 'criteria-1', score: 8, comment: 'Great work' },
-      { criteria_id: 'criteria-2', score: 9 }
+      { 
+        criteria_id: 'criteria-1', 
+        answer: { text: "Excellent performance..." } // Flexible answer format
+      },
+      { 
+        criteria_id: 'criteria-2', 
+        answer: { selected: "Excellent" } // Single select
+      }
     ]
   })
 });
@@ -167,7 +188,7 @@ const nomination: Nomination = await apiRequest('/nominations', {
 ### Updating Resources
 
 ```typescript
-// Update cycle
+// Update cycle (HR only)
 const updatedCycle: Cycle = await apiRequest(`/cycles/${cycleId}`, {
   method: 'PATCH',
   body: JSON.stringify({
@@ -176,12 +197,16 @@ const updatedCycle: Cycle = await apiRequest(`/cycles/${cycleId}`, {
   })
 });
 
-// Update criteria
+// Update criteria (HR only)
 const updatedCriteria: Criteria = await apiRequest(`/criteria/${criteriaId}`, {
   method: 'PATCH',
   body: JSON.stringify({
     description: 'Updated description',
-    is_active: false
+    is_active: false,
+    config: { // Update question configuration
+      type: "single_select",
+      options: ["Option A", "Option B"]
+    }
   })
 });
 ```
@@ -189,12 +214,12 @@ const updatedCriteria: Criteria = await apiRequest(`/criteria/${criteriaId}`, {
 ### Deleting Resources
 
 ```typescript
-// Delete cycle
+// Delete cycle (HR only)
 await apiRequest(`/cycles/${cycleId}`, {
   method: 'DELETE'
 });
 
-// Delete criteria
+// Delete criteria (HR only)
 await apiRequest(`/criteria/${criteriaId}`, {
   method: 'DELETE'
 });
