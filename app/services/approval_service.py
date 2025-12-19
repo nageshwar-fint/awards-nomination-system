@@ -33,6 +33,13 @@ class ApprovalService:
             raise ValueError("Actor not found")
         if actor.role not in (models.UserRole.MANAGER, models.UserRole.HR):
             raise PermissionError("Only MANAGER or HR can act on nominations")
+        
+        # Conflict check: If a MANAGER submitted the nomination, that same MANAGER cannot approve/reject it
+        # HR can always approve/reject regardless of who submitted
+        submitter = self.session.get(models.User, nomination.submitted_by)
+        if submitter and actor.role == models.UserRole.MANAGER and submitter.role == models.UserRole.MANAGER:
+            if actor.id == submitter.id:
+                raise PermissionError("A manager cannot approve or reject their own nomination. Another manager or HR must review it.")
 
         approval = models.Approval(
             nomination_id=nomination.id,

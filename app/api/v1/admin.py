@@ -101,7 +101,12 @@ def create_user(
         db.commit()
         db.refresh(user)
         
-        return UserRead.model_validate(user)
+        # Enrich user with team name
+        user_dict = UserRead.model_validate(user).model_dump()
+        if user.team:
+            user_dict['team_name'] = user.team.name
+        
+        return UserRead.model_validate(user_dict)
         
     except Exception as e:
         db.rollback()
@@ -153,9 +158,20 @@ def list_users(
         )
     
     stmt = stmt.order_by(User.created_at.desc()).offset(skip).limit(limit)
-    users = db.scalars(stmt).all()
+    # Eager load team relationship to avoid N+1 queries
+    from sqlalchemy.orm import joinedload
+    stmt = stmt.options(joinedload(User.team))
+    users = db.scalars(stmt).unique().all()
     
-    return [UserRead.model_validate(user) for user in users]
+    # Enrich users with team names
+    result = []
+    for user in users:
+        user_dict = UserRead.model_validate(user).model_dump()
+        if user.team:
+            user_dict['team_name'] = user.team.name
+        result.append(UserRead.model_validate(user_dict))
+    
+    return result
 
 
 @router.get("/users/{user_id}", response_model=UserRead)
@@ -175,7 +191,13 @@ def get_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return UserRead.model_validate(user)
+    
+    # Enrich user with team name
+    user_dict = UserRead.model_validate(user).model_dump()
+    if user.team:
+        user_dict['team_name'] = user.team.name
+    
+    return UserRead.model_validate(user_dict)
 
 
 @router.patch("/users/{user_id}", response_model=UserRead)
@@ -255,7 +277,13 @@ def update_user(
     try:
         db.commit()
         db.refresh(user)
-        return UserRead.model_validate(user)
+        
+        # Enrich user with team name
+        user_dict = UserRead.model_validate(user).model_dump()
+        if user.team:
+            user_dict['team_name'] = user.team.name
+        
+        return UserRead.model_validate(user_dict)
     except Exception as e:
         db.rollback()
         raise HTTPException(

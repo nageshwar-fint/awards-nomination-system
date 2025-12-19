@@ -32,6 +32,7 @@ class UserRead(BaseSchema):
     email: str = Field(..., max_length=255)
     role: str
     team_id: Optional[UUID] = None
+    team_name: Optional[str] = None  # Name of the team
     status: str
     profile_picture_url: Optional[str] = None
     created_at: datetime
@@ -134,8 +135,12 @@ class NominationRead(BaseSchema):
     id: UUID
     cycle_id: UUID
     nominee_user_id: UUID
+    nominee_name: Optional[str] = None  # Name of the nominee
+    nominee_email: Optional[str] = None  # Email of the nominee
     team_id: Optional[UUID]
     submitted_by: UUID
+    submitted_by_name: Optional[str] = None  # Name of the person who submitted
+    submitted_by_email: Optional[str] = None  # Email of the person who submitted
     submitted_at: datetime
     status: str
     created_at: datetime

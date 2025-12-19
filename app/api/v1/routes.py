@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.auth.jwt import get_current_user, get_optional_user
@@ -24,6 +24,7 @@ from app.schemas.base import (
     NominationCreate,
     NominationRead,
     RankingRead,
+    TeamRead,
     UserRead,
 )
 from app.services.approval_service import ApprovalService
@@ -408,8 +409,28 @@ async def list_nominations(
             )
 
     stmt = stmt.order_by(models.Nomination.created_at.desc()).offset(skip).limit(limit)
-    nominations = db.scalars(stmt).all()
-    return [NominationRead.model_validate(n) for n in nominations]
+    # Eager load relationships to avoid N+1 queries
+    stmt = stmt.options(
+        joinedload(models.Nomination.nominee),
+        joinedload(models.Nomination.submitted_by_user)
+    )
+    nominations = db.scalars(stmt).unique().all()
+    
+    # Enrich nominations with user names
+    result = []
+    for nomination in nominations:
+        nom_dict = NominationRead.model_validate(nomination).model_dump()
+        # Add nominee information
+        if nomination.nominee:
+            nom_dict['nominee_name'] = nomination.nominee.name
+            nom_dict['nominee_email'] = nomination.nominee.email
+        # Add submitter information
+        if nomination.submitted_by_user:
+            nom_dict['submitted_by_name'] = nomination.submitted_by_user.name
+            nom_dict['submitted_by_email'] = nomination.submitted_by_user.email
+        result.append(NominationRead.model_validate(nom_dict))
+    
+    return result
 
 
 @router.get("/nominations/{nomination_id}", response_model=NominationRead)
@@ -422,7 +443,17 @@ async def get_nomination(
     nomination = db.get(models.Nomination, nomination_id)
     if not nomination:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nomination not found")
-    return NominationRead.model_validate(nomination)
+    
+    # Enrich nomination with user names
+    nom_dict = NominationRead.model_validate(nomination).model_dump()
+    if nomination.nominee:
+        nom_dict['nominee_name'] = nomination.nominee.name
+        nom_dict['nominee_email'] = nomination.nominee.email
+    if nomination.submitted_by_user:
+        nom_dict['submitted_by_name'] = nomination.submitted_by_user.name
+        nom_dict['submitted_by_email'] = nomination.submitted_by_user.email
+    
+    return NominationRead.model_validate(nom_dict)
 
 
 @router.post("/nominations", response_model=NominationRead, status_code=status.HTTP_201_CREATED)
@@ -443,7 +474,19 @@ async def submit_nomination(
             scores=scores,
         )
         db.commit()
-        return NominationRead.model_validate(nomination)
+        # Refresh to get relationships
+        db.refresh(nomination)
+        
+        # Enrich nomination with user names
+        nom_dict = NominationRead.model_validate(nomination).model_dump()
+        if nomination.nominee:
+            nom_dict['nominee_name'] = nomination.nominee.name
+            nom_dict['nominee_email'] = nomination.nominee.email
+        if nomination.submitted_by_user:
+            nom_dict['submitted_by_name'] = nomination.submitted_by_user.name
+            nom_dict['submitted_by_email'] = nomination.submitted_by_user.email
+        
+        return NominationRead.model_validate(nom_dict)
     except ValueError as e:
         db.rollback()
         raise AppError(str(e), status_code=status.HTTP_400_BAD_REQUEST)
@@ -452,6 +495,57 @@ async def submit_nomination(
         raise AppError(str(e), status_code=status.HTTP_403_FORBIDDEN)
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.delete("/nominations/{nomination_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revert_nomination(
+    nomination_id: UUID,
+    current_user: User = Depends(RequireHR),
+    db: Session = Depends(get_session),
+) -> None:
+    """
+    Revert/delete a nomination (HR/Admin only).
+    
+    This allows HR/Admin to delete a nomination, which will:
+    - Remove the nomination and all associated data (scores, approvals)
+    - Allow the employee to be nominated again by anyone (Team Lead, Manager, or HR)
+    - Enable re-assignment of weightage for that employee
+    """
+    nomination = db.get(models.Nomination, nomination_id)
+    if not nomination:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nomination not found")
+    
+    try:
+        # Delete related records (approvals and scores will be deleted via cascade)
+        # But we need to delete them explicitly to ensure proper cleanup
+        from app.models.domain import Approval, NominationCriteriaScore
+        
+        # Delete approvals
+        db.query(Approval).filter(Approval.nomination_id == nomination_id).delete()
+        
+        # Delete scores
+        db.query(NominationCriteriaScore).filter(NominationCriteriaScore.nomination_id == nomination_id).delete()
+        
+        # Delete the nomination
+        db.delete(nomination)
+        db.commit()
+        
+        # Record audit
+        from app.services.audit import record_audit
+        record_audit(
+            db,
+            current_user.id,
+            "nomination.revert",
+            "Nomination",
+            nomination_id,
+            {"nominee_user_id": str(nomination.nominee_user_id), "cycle_id": str(nomination.cycle_id)}
+        )
+    except Exception as e:
+        db.rollback()
+        import traceback
+        print(f"Error reverting nomination: {e}")
+        print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -533,6 +627,18 @@ async def reject_nomination(
         print(f"Error rejecting nomination: {e}")
         print(traceback.format_exc())
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+# Teams endpoints
+@router.get("/teams", response_model=List[TeamRead])
+async def list_teams(
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_session),
+) -> List[TeamRead]:
+    """List all teams."""
+    stmt = select(models.Team).order_by(models.Team.name.asc())
+    teams = db.scalars(stmt).all()
+    return [TeamRead.model_validate(team) for team in teams]
 
 
 # Ranking endpoints
