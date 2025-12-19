@@ -644,7 +644,7 @@ def test_logout(client: TestClient, get_auth_headers, test_user):
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
-    assert "logout" in data["message"].lower()
+    assert "logged out" in data["message"].lower()
 
 
 def test_logout_unauthorized(client: TestClient):
