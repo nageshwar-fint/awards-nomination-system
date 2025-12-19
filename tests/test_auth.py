@@ -633,3 +633,21 @@ def test_password_hashing():
     assert password_hash != password_hash2
     # But both should verify correctly
     assert verify_password(password, password_hash2) is True
+
+
+def test_logout(client: TestClient, get_auth_headers, test_user):
+    """Test logout endpoint."""
+    headers = get_auth_headers(test_user)
+    
+    response = client.post("/api/v1/auth/logout", headers=headers)
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+    assert "logout" in data["message"].lower()
+
+
+def test_logout_unauthorized(client: TestClient):
+    """Test logout without authentication."""
+    response = client.post("/api/v1/auth/logout")
+    assert response.status_code in (401, 403)
