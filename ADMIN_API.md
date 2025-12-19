@@ -39,6 +39,11 @@ Create a new user account. HR can create users with any role.
 - At least one number
 - At least one special character (!@#$%^&*)
 
+**Role Assignment:**
+- HR can assign any role including HR (admin) role to users
+- Available roles: `EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`
+- No restrictions on role assignment - HR has full control
+
 **Response:** `201 Created`
 ```json
 {
@@ -191,7 +196,8 @@ Update a user's information. All fields are optional - only provided fields will
 
 **Validation:**
 - Email must be unique (if provided)
-- Role must be valid UserRole enum value
+- Role must be valid UserRole enum value (`EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`)
+- HR can assign or remove any role, including HR (admin) role - no restrictions
 - Status must be `ACTIVE` or `INACTIVE`
 - Team ID must exist in database (if provided)
 
@@ -306,6 +312,26 @@ curl -X PATCH "http://localhost:8000/api/v1/admin/users/{user_id}" \
   -d '{"role": "TEAM_LEAD"}'
 ```
 
+### Assign HR (Admin) Role to User
+
+```bash
+curl -X PATCH "http://localhost:8000/api/v1/admin/users/{user_id}" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "HR"}'
+```
+
+### Remove HR Role from User (Demote)
+
+```bash
+curl -X PATCH "http://localhost:8000/api/v1/admin/users/{user_id}" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "EMPLOYEE"}'
+```
+
+**Note:** HR can assign or remove any role including HR (admin) role. There are no restrictions on role changes.
+
 ### Assign User to Team
 
 ```bash
@@ -335,6 +361,23 @@ curl -X GET "http://localhost:8000/api/v1/admin/users?search=john" \
 curl -X GET "http://localhost:8000/api/v1/admin/users?role_filter=MANAGER" \
   -H "Authorization: Bearer <token>"
 ```
+
+### Create New HR (Admin) User Account
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/admin/users" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Admin User",
+    "email": "admin@example.com",
+    "password": "SecurePass123!",
+    "role": "HR",
+    "status": "ACTIVE"
+  }'
+```
+
+**Note:** HR can create users with any role including HR (admin) role.
 
 ---
 
@@ -371,11 +414,16 @@ All errors follow the standard error format:
 
 3. **Self-Deletion Prevention**: Users cannot delete their own accounts through the admin API.
 
-4. **Role Hierarchy**: The system has 4 roles:
-   - `EMPLOYEE`: Basic user
-   - `TEAM_LEAD`: Can create cycles and submit nominations
-   - `MANAGER`: Can approve nominations and finalize cycles
-   - `HR`: Full administrative access (required for admin API)
+4. **Role Management**: HR has full control over role assignment:
+   - HR can assign or remove any role including HR (admin) role
+   - No restrictions on role changes - HR can promote or demote any user
+   - Available roles: `EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`
+   
+   **Role Hierarchy**:
+   - `EMPLOYEE`: Basic user (view-only access)
+   - `TEAM_LEAD`: Can submit nominations
+   - `MANAGER`: Can approve nominations and compute rankings
+   - `HR`: Full administrative access (required for admin API, can manage everything)
 
 5. **Team Validation**: When updating `team_id`, the team must exist in the database. Setting `team_id` to `null` removes the user from their team.
 

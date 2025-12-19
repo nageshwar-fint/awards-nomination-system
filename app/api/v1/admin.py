@@ -33,7 +33,8 @@ def create_user(
     
     - Email must be unique
     - Password must meet strength requirements
-    - Role must be a valid UserRole enum value
+    - Role must be a valid UserRole enum value (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+    - HR can assign any role including HR (admin) role - no restrictions
     - Status defaults to ACTIVE if not provided
     - Team must exist if team_id is provided
     """
@@ -191,7 +192,8 @@ def update_user(
     
     - Cannot update password through this endpoint (use password reset flow)
     - Email uniqueness is validated if email is being updated
-    - Role must be a valid UserRole enum value
+    - Role must be a valid UserRole enum value (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+    - HR can assign or remove any role including HR (admin) role - no restrictions
     - Status must be ACTIVE or INACTIVE
     """
     user = db.get(User, user_id)

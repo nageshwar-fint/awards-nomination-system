@@ -15,7 +15,7 @@ The system has 4 roles with different permissions:
 | **EMPLOYEE** | View-only access (cycles, nominations, rankings) |
 | **TEAM_LEAD** | Submit nominations |
 | **MANAGER** | Submit nominations, approve/reject with ratings, compute rankings |
-| **HR** | Full system access: manage cycles, criteria, users, approve, finalize |
+| **HR** | Full system access: manage cycles, criteria, users (including role assignment/removal for all roles including HR), approve, finalize |
 
 ## UI Components Structure
 
