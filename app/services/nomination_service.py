@@ -37,6 +37,7 @@ class NominationService:
                 weight=Decimal(str(item["weight"])),
                 description=item.get("description"),
                 is_active=item.get("is_active", True),
+                config=item.get("config"),  # Store config JSON
             )
             self.session.add(crit)
             items.append(crit)

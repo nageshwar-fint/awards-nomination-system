@@ -77,7 +77,7 @@ class CriteriaCreate(BaseSchema):
     weight: condecimal(max_digits=5, decimal_places=4)
     description: Optional[str] = None
     is_active: bool = True
-    config: Optional[CriteriaConfig] = Field(None, description="Question configuration (type, options, etc.)")
+    config: Optional[dict] = Field(None, description="Question configuration (type, options, etc.)")
 
 
 class CriteriaUpdate(BaseSchema):
@@ -85,7 +85,7 @@ class CriteriaUpdate(BaseSchema):
     weight: Optional[condecimal(max_digits=5, decimal_places=4)] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
-    config: Optional[CriteriaConfig] = None
+    config: Optional[dict] = None
 
 
 class CriteriaRead(CriteriaCreate):
@@ -119,7 +119,7 @@ class NominationScoreInput(BaseSchema):
 class NominationCreate(BaseSchema):
     cycle_id: UUID
     nominee_user_id: UUID
-    submitted_by: UUID
+    # submitted_by is taken from authenticated user, not request body
     scores: List[NominationScoreInput]
 
 
@@ -137,7 +137,7 @@ class NominationRead(BaseSchema):
 
 class ApprovalActionRequest(BaseSchema):
     nomination_id: UUID
-    actor_user_id: UUID
+    # actor_user_id is taken from authenticated user, not request body
     reason: Optional[str] = None
     rating: Optional[float] = Field(None, ge=0, le=10, description="Manager rating (0-10 scale)")
 

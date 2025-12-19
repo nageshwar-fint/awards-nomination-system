@@ -255,6 +255,8 @@ async def update_criteria(
         criteria.description = update_data["description"]
     if "is_active" in update_data:
         criteria.is_active = update_data["is_active"]
+    if "config" in update_data:
+        criteria.config = update_data["config"]
 
     # If weight changed, validate total weight doesn't exceed 1.0
     if "weight" in update_data:
