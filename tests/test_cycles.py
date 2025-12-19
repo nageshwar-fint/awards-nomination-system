@@ -222,12 +222,13 @@ def test_delete_cycle_not_draft(client: TestClient, test_cycle, test_hr_user, ge
     assert "DRAFT" in response.json()["error"]["message"]
 
 
-def test_finalize_cycle_hr_only(client: TestClient, test_cycle, test_hr_user, test_manager_user, get_auth_headers):
+def test_finalize_cycle_hr_only(client: TestClient, test_cycle, test_hr_user, get_auth_headers, db_session):
     """Test that only HR can finalize cycles."""
     from app.models.domain import CycleStatus
     
     # First close the cycle
     test_cycle.status = CycleStatus.CLOSED
+    db_session.commit()
     
     # HR should succeed
     response = client.post(
