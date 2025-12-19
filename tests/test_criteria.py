@@ -48,8 +48,8 @@ def test_add_criteria_unauthorized(client: TestClient, test_cycle):
     assert response.status_code in (401, 403)
 
 
-def test_add_criteria(client: TestClient, test_draft_cycle, test_team_lead_user, get_auth_headers):
-    """Test adding criteria to a cycle."""
+def test_add_criteria_hr_only(client: TestClient, test_draft_cycle, test_hr_user, get_auth_headers):
+    """Test that only HR can add criteria."""
     criteria_data = [{
         "name": "New Criteria",
         "weight": 0.3,
@@ -59,7 +59,7 @@ def test_add_criteria(client: TestClient, test_draft_cycle, test_team_lead_user,
     response = client.post(
         f"/api/v1/cycles/{test_draft_cycle.id}/criteria",
         json=criteria_data,
-        headers=get_auth_headers(test_team_lead_user),
+        headers=get_auth_headers(test_hr_user),
     )
     assert response.status_code == 201
     data = response.json()
@@ -67,7 +67,33 @@ def test_add_criteria(client: TestClient, test_draft_cycle, test_team_lead_user,
     assert data[0]["name"] == "New Criteria"
 
 
-def test_add_criteria_weight_exceeds_one(client: TestClient, test_draft_cycle, test_team_lead_user, get_auth_headers):
+def test_add_criteria_forbidden_non_hr(client: TestClient, test_draft_cycle, test_team_lead_user, test_manager_user, get_auth_headers):
+    """Test that non-HR users cannot add criteria."""
+    criteria_data = [{
+        "name": "New Criteria",
+        "weight": 0.3,
+        "description": "New criteria description",
+        "is_active": True,
+    }]
+    
+    # Team Lead should be forbidden
+    response = client.post(
+        f"/api/v1/cycles/{test_draft_cycle.id}/criteria",
+        json=criteria_data,
+        headers=get_auth_headers(test_team_lead_user),
+    )
+    assert response.status_code == 403
+    
+    # Manager should be forbidden
+    response = client.post(
+        f"/api/v1/cycles/{test_draft_cycle.id}/criteria",
+        json=criteria_data,
+        headers=get_auth_headers(test_manager_user),
+    )
+    assert response.status_code == 403
+
+
+def test_add_criteria_weight_exceeds_one(client: TestClient, test_draft_cycle, test_hr_user, get_auth_headers):
     """Test adding criteria that exceeds total weight of 1.0."""
     criteria_data = [{
         "name": "Heavy Criteria",
@@ -76,13 +102,13 @@ def test_add_criteria_weight_exceeds_one(client: TestClient, test_draft_cycle, t
     response = client.post(
         f"/api/v1/cycles/{test_draft_cycle.id}/criteria",
         json=criteria_data,
-        headers=get_auth_headers(test_team_lead_user),
+        headers=get_auth_headers(test_hr_user),
     )
     assert response.status_code == 400
 
 
-def test_update_criteria(client: TestClient, test_draft_cycle, test_team_lead_user, get_auth_headers, db_session):
-    """Test updating criteria in a draft cycle."""
+def test_update_criteria_hr_only(client: TestClient, test_draft_cycle, test_hr_user, get_auth_headers, db_session):
+    """Test that only HR can update criteria."""
     from app.models.domain import Criteria
     
     # Create criteria in draft cycle (can update name)
@@ -104,12 +130,33 @@ def test_update_criteria(client: TestClient, test_draft_cycle, test_team_lead_us
     response = client.patch(
         f"/api/v1/criteria/{criteria.id}",
         json=update_data,
-        headers=get_auth_headers(test_team_lead_user),
+        headers=get_auth_headers(test_hr_user),
     )
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "Updated Criteria Name"
     assert data["description"] == "Updated description"
+
+
+def test_update_criteria_forbidden_non_hr(client: TestClient, test_criteria, test_team_lead_user, test_manager_user, get_auth_headers):
+    """Test that non-HR users cannot update criteria."""
+    update_data = {"name": "Updated Criteria Name"}
+    
+    # Team Lead should be forbidden
+    response = client.patch(
+        f"/api/v1/criteria/{test_criteria.id}",
+        json=update_data,
+        headers=get_auth_headers(test_team_lead_user),
+    )
+    assert response.status_code == 403
+    
+    # Manager should be forbidden
+    response = client.patch(
+        f"/api/v1/criteria/{test_criteria.id}",
+        json=update_data,
+        headers=get_auth_headers(test_manager_user),
+    )
+    assert response.status_code == 403
 
 
 def test_update_criteria_unauthorized(client: TestClient, test_criteria):
@@ -119,8 +166,8 @@ def test_update_criteria_unauthorized(client: TestClient, test_criteria):
     assert response.status_code in (401, 403)
 
 
-def test_delete_criteria_unused(client: TestClient, test_draft_cycle, test_team_lead_user, get_auth_headers, db_session):
-    """Test deleting unused criteria."""
+def test_delete_criteria_unused_hr_only(client: TestClient, test_draft_cycle, test_hr_user, get_auth_headers, db_session):
+    """Test that only HR can delete unused criteria."""
     from app.models.domain import Criteria
     
     # Create a new unused criteria
@@ -136,7 +183,7 @@ def test_delete_criteria_unused(client: TestClient, test_draft_cycle, test_team_
 
     response = client.delete(
         f"/api/v1/criteria/{unused_criteria.id}",
-        headers=get_auth_headers(test_team_lead_user),
+        headers=get_auth_headers(test_hr_user),
     )
     assert response.status_code == 204
 
@@ -145,13 +192,30 @@ def test_delete_criteria_unused(client: TestClient, test_draft_cycle, test_team_
     assert get_response.status_code == 404
 
 
-def test_delete_criteria_used(client: TestClient, test_criteria, test_nomination, test_team_lead_user, get_auth_headers):
+def test_delete_criteria_forbidden_non_hr(client: TestClient, test_criteria, test_team_lead_user, test_manager_user, get_auth_headers):
+    """Test that non-HR users cannot delete criteria."""
+    # Team Lead should be forbidden
+    response = client.delete(
+        f"/api/v1/criteria/{test_criteria.id}",
+        headers=get_auth_headers(test_team_lead_user),
+    )
+    assert response.status_code == 403
+    
+    # Manager should be forbidden
+    response = client.delete(
+        f"/api/v1/criteria/{test_criteria.id}",
+        headers=get_auth_headers(test_manager_user),
+    )
+    assert response.status_code == 403
+
+
+def test_delete_criteria_used(client: TestClient, test_criteria, test_nomination, test_hr_user, get_auth_headers):
     """Test deleting criteria that's been used (should fail)."""
     # test_criteria is used by test_nomination fixture - ensure it exists
     # The test_nomination fixture creates NominationCriteriaScore linking to test_criteria
     response = client.delete(
         f"/api/v1/criteria/{test_criteria.id}",
-        headers=get_auth_headers(test_team_lead_user),
+        headers=get_auth_headers(test_hr_user),
     )
     assert response.status_code == 400
     assert "used" in response.json()["error"]["message"].lower()
