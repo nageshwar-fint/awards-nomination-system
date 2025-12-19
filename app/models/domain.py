@@ -63,6 +63,7 @@ class User(TimestampedUUIDBase):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), nullable=False)
     team_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, server_default="ACTIVE")
+    profile_picture_url: Mapped[str | None] = mapped_column(String(500), nullable=True)  # URL to profile picture
 
     team: Mapped[Team | None] = relationship("Team", back_populates="members", foreign_keys=[team_id])
     submissions: Mapped[list["Nomination"]] = relationship(
@@ -117,6 +118,9 @@ class Criteria(TimestampedUUIDBase):
 class Nomination(TimestampedUUIDBase):
     __tablename__ = "nominations"
     __table_args__ = (
+        # Prevent same employee from being nominated twice in the same cycle (regardless of who submits)
+        UniqueConstraint("cycle_id", "nominee_user_id", name="uq_nomination_unique_nominee"),
+        # Also prevent same person from submitting multiple nominations for same employee in same cycle
         UniqueConstraint("cycle_id", "nominee_user_id", "submitted_by", name="uq_nomination_unique_submitter"),
         Index("ix_nominations_cycle_team", "cycle_id", "team_id"),
     )

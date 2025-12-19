@@ -73,6 +73,17 @@ class NominationService:
             raise PermissionError("Only TEAM_LEAD, MANAGER, or HR can submit nominations")
 
         nominee = self._get_user_or_raise(nominee_user_id)
+        
+        # Check if this employee is already nominated in this cycle (by anyone)
+        existing_nomination = self.session.scalar(
+            select(models.Nomination).where(
+                models.Nomination.cycle_id == cycle.id,
+                models.Nomination.nominee_user_id == nominee.id
+            )
+        )
+        if existing_nomination:
+            raise ValueError(f"Employee {nominee.name} has already been nominated for this cycle")
+        
         nomination = models.Nomination(
             cycle_id=cycle.id,
             nominee_user_id=nominee.id,
@@ -131,7 +142,11 @@ class NominationService:
             self.session.flush()
         except IntegrityError as exc:
             self.session.rollback()
-            raise ValueError("Duplicate nomination for this cycle/nominee/submitter") from exc
+            # Check which constraint was violated
+            if "uq_nomination_unique_nominee" in str(exc):
+                raise ValueError(f"Employee {nominee.name} has already been nominated for this cycle") from exc
+            else:
+                raise ValueError("Duplicate nomination for this cycle/nominee/submitter") from exc
 
         record_audit(
             self.session,

@@ -33,6 +33,7 @@ class UserRead(BaseSchema):
     role: str
     team_id: Optional[UUID] = None
     status: str
+    profile_picture_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
