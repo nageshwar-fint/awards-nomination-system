@@ -700,20 +700,6 @@ Approve a nomination with optional rating.
 
 **Authentication:** Required (MANAGER, HR)
 
-**Response:** `201 Created`
-```json
-{
-  "id": "uuid",
-  "nomination_id": "uuid",
-  "actor_user_id": "uuid",
-  "action": "APPROVE",
-  "reason": "Meets all criteria",
-  "acted_at": "2024-01-16T14:20:00Z",
-  "created_at": "2024-01-16T14:20:00Z",
-  "updated_at": "2024-01-16T14:20:00Z"
-}
-```
-
 **Request Body:**
 ```json
 {
