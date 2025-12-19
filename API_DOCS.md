@@ -14,12 +14,25 @@ All protected endpoints require JWT authentication via Bearer token in the Autho
 
 ### Getting a Token
 
-**Note:** Currently, the API doesn't have a login endpoint. Tokens need to be generated server-side or using the JWT creation utility. For development, you can use the JWT helper function in the backend.
+Use the `/auth/login` endpoint to authenticate and get a JWT token:
 
 ```javascript
-// Example: Include token in requests
-const token = 'your-jwt-token-here';
+// Login and get token
+const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password123'
+  })
+});
 
+const data = await response.json();
+const token = data.access_token;
+
+// Use token in subsequent requests
 fetch('http://localhost:8000/api/v1/cycles', {
   headers: {
     'Authorization': `Bearer ${token}`,
@@ -27,6 +40,8 @@ fetch('http://localhost:8000/api/v1/cycles', {
   }
 })
 ```
+
+See [Authentication Endpoints](#authentication) section for details.
 
 ### Token Format
 
@@ -44,10 +59,10 @@ JWT tokens contain:
 
 | Role | Permissions |
 |------|-------------|
-| **EMPLOYEE** | Read-only access to cycles, nominations, rankings |
-| **TEAM_LEAD** | Can submit nominations, create/update cycles (DRAFT only), manage criteria |
-| **MANAGER** | All TEAM_LEAD permissions + approve/reject nominations, compute rankings, finalize cycles |
-| **HR** | Full access (all MANAGER permissions) |
+| **EMPLOYEE** | Read-only access (view cycles, nominations, rankings) |
+| **TEAM_LEAD** | Submit nominations |
+| **MANAGER** | Submit nominations, approve/reject nominations (with ratings), compute rankings |
+| **HR** | Full system access: manage cycles (create/update/delete/finalize), manage criteria (create/update/delete with flexible config), manage users (create/read/update/delete/activate/deactivate, assign any role including HR), approve nominations, compute rankings |
 
 ## Common Response Formats
 
@@ -83,6 +98,144 @@ Many list endpoints support pagination:
 - `limit`: Maximum number of records to return (default: 100, max: 1000)
 
 ## Endpoints
+
+### Authentication
+
+#### POST /auth/register
+
+Register a new user account (defaults to EMPLOYEE role).
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "team_id": "uuid-or-null",
+  "security_questions": [
+    {
+      "question_text": "What city were you born in?",
+      "answer": "New York"
+    },
+    {
+      "question_text": "What was your first pet's name?",
+      "answer": "Fluffy"
+    }
+  ]
+}
+```
+
+**Response:** `201 Created` (UserRead)
+
+---
+
+#### POST /auth/login
+
+Authenticate user and get JWT token.
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "access_token": "jwt-token-string",
+  "token_type": "bearer",
+  "expires_in": 1800,
+  "user": {
+    "id": "uuid",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "EMPLOYEE",
+    "status": "ACTIVE"
+  }
+}
+```
+
+**Errors:**
+- `401`: Invalid email or password
+- `403`: Account is inactive
+
+---
+
+#### POST /auth/logout
+
+Logout current user (client should delete token).
+
+**Authentication:** Required
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Logged out successfully. Please delete the token from client storage."
+}
+```
+
+**Note:** Since JWTs are stateless, this endpoint serves as confirmation. The client must delete the token from storage.
+
+---
+
+#### POST /auth/forgot-password
+
+Request password reset via security questions.
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:** `200 OK` (MessageResponse)
+
+---
+
+#### POST /auth/reset-password
+
+Reset password using security question answers.
+
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "new_password": "NewSecurePass123!",
+  "security_question_answers": [
+    {
+      "question_text": "What city were you born in?",
+      "answer": "New York"
+    },
+    {
+      "question_text": "What was your first pet's name?",
+      "answer": "Fluffy"
+    }
+  ]
+}
+```
+
+**Response:** `200 OK` (MessageResponse)
+
+---
+
+### Admin API
+
+For user management endpoints (create, update, delete, activate/deactivate users, assign roles), see [ADMIN_API.md](ADMIN_API.md).
+
+All admin endpoints require HR role and are prefixed with `/api/v1/admin`.
+
+---
 
 ### Health Check
 
@@ -160,7 +313,7 @@ Get a specific cycle by ID.
 
 Create a new nomination cycle.
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Request Body:**
 ```json
@@ -192,7 +345,7 @@ Create a new nomination cycle.
 
 Update a cycle (only DRAFT cycles can be updated).
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Request Body:** (all fields optional)
 ```json
@@ -216,7 +369,7 @@ Update a cycle (only DRAFT cycles can be updated).
 
 Delete a cycle (only DRAFT cycles with no nominations).
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Response:** `204 No Content`
 
@@ -269,9 +422,9 @@ Get a specific criteria by ID.
 
 #### POST /cycles/{cycle_id}/criteria
 
-Add criteria to a cycle.
+Add criteria to a cycle with flexible question configuration.
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Request Body:**
 ```json
@@ -280,15 +433,41 @@ Add criteria to a cycle.
     "name": "Leadership",
     "weight": 0.5,
     "description": "Leadership skills",
-    "is_active": true
+    "is_active": true,
+    "config": {
+      "type": "text",
+      "required": true
+    }
   },
   {
     "name": "Innovation",
     "weight": 0.3,
-    "description": "Innovative contributions"
+    "description": "Innovative contributions",
+    "config": {
+      "type": "single_select",
+      "required": true,
+      "options": ["Excellent", "Good", "Average", "Poor"]
+    }
+  },
+  {
+    "name": "Skills Assessment",
+    "weight": 0.2,
+    "config": {
+      "type": "text_with_image",
+      "required": false,
+      "image_required": false
+    }
   }
 ]
 ```
+
+**Config Types:**
+- `text`: Free text answer
+- `single_select`: Single choice from options
+- `multi_select`: Multiple choices from options
+- `text_with_image`: Text answer with optional image attachment
+
+See [FLEXIBLE_CRITERIA_SYSTEM.md](FLEXIBLE_CRITERIA_SYSTEM.md) for detailed configuration options.
 
 **Response:** `201 Created`
 ```json
@@ -312,9 +491,9 @@ Add criteria to a cycle.
 
 #### PATCH /criteria/{criteria_id}
 
-Update criteria. Weight/name can only be updated for DRAFT cycles.
+Update criteria. Weight/name/config can only be updated for DRAFT cycles.
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Request Body:** (all fields optional)
 ```json
@@ -322,7 +501,12 @@ Update criteria. Weight/name can only be updated for DRAFT cycles.
   "name": "Updated Name",
   "weight": 0.6,
   "description": "Updated description",
-  "is_active": false
+  "is_active": false,
+  "config": {
+    "type": "single_select",
+    "required": true,
+    "options": ["Option 1", "Option 2", "Option 3"]
+  }
 }
 ```
 
@@ -338,7 +522,7 @@ Update criteria. Weight/name can only be updated for DRAFT cycles.
 
 Delete criteria (only if unused).
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (HR only)
 
 **Response:** `204 No Content`
 
@@ -401,30 +585,58 @@ Get a specific nomination by ID.
 
 #### POST /nominations
 
-Submit a new nomination.
+Submit a new nomination with flexible criteria answers.
 
-**Authentication:** Required (TEAM_LEAD+)
+**Authentication:** Required (TEAM_LEAD, MANAGER, HR)
 
 **Request Body:**
 ```json
 {
   "cycle_id": "uuid",
   "nominee_user_id": "uuid",
-  "submitted_by": "uuid",  // Ignored, uses authenticated user
   "scores": [
     {
       "criteria_id": "uuid",
-      "score": 8,
-      "comment": "Excellent leadership demonstrated"
+      "answer": {
+        "text": "Excellent leadership skills demonstrated..."
+      }
     },
     {
       "criteria_id": "uuid",
-      "score": 9,
-      "comment": "Outstanding innovation"
+      "answer": {
+        "selected": "Excellent"
+      }
+    },
+    {
+      "criteria_id": "uuid",
+      "answer": {
+        "selected_list": ["Skill A", "Skill B", "Skill C"]
+      }
+    },
+    {
+      "criteria_id": "uuid",
+      "answer": {
+        "text": "Strong performance...",
+        "image_url": "https://example.com/image.jpg"
+      }
+    },
+    {
+      "criteria_id": "uuid",
+      "score": 8,
+      "comment": "Legacy format (backward compatible)"
     }
   ]
 }
 ```
+
+**Answer Format (based on criteria config type):**
+- `text`: `{"text": "answer text"}`
+- `single_select`: `{"selected": "option value"}`
+- `multi_select`: `{"selected_list": ["option1", "option2"]}`
+- `text_with_image`: `{"text": "answer", "image_url": "url"}`
+- Legacy: `{"score": number, "comment": "string"}` (backward compatible)
+
+**Note:** `submitted_by` is automatically set from authenticated user (not required in request).
 
 **Response:** `201 Created`
 ```json
@@ -484,18 +696,9 @@ Get all approvals for a specific nomination.
 
 #### POST /approvals/approve
 
-Approve a nomination.
+Approve a nomination with optional rating.
 
-**Authentication:** Required (MANAGER+)
-
-**Request Body:**
-```json
-{
-  "nomination_id": "uuid",
-  "actor_user_id": "uuid",  // Ignored, uses authenticated user
-  "reason": "Meets all criteria and demonstrates excellent performance"
-}
-```
+**Authentication:** Required (MANAGER, HR)
 
 **Response:** `201 Created`
 ```json
@@ -505,6 +708,32 @@ Approve a nomination.
   "actor_user_id": "uuid",
   "action": "APPROVE",
   "reason": "Meets all criteria",
+  "acted_at": "2024-01-16T14:20:00Z",
+  "created_at": "2024-01-16T14:20:00Z",
+  "updated_at": "2024-01-16T14:20:00Z"
+}
+```
+
+**Request Body:**
+```json
+{
+  "nomination_id": "uuid",
+  "reason": "Meets all criteria and demonstrates excellent performance",
+  "rating": 9.5
+}
+```
+
+**Note:** `actor_user_id` is automatically set from authenticated user (not required in request). `rating` is optional (0-10 scale).
+
+**Response:** `201 Created`
+```json
+{
+  "id": "uuid",
+  "nomination_id": "uuid",
+  "actor_user_id": "uuid",
+  "action": "APPROVE",
+  "reason": "Meets all criteria",
+  "rating": 9.5,
   "acted_at": "2024-01-16T14:20:00Z",
   "created_at": "2024-01-16T14:20:00Z",
   "updated_at": "2024-01-16T14:20:00Z"
@@ -522,16 +751,18 @@ Approve a nomination.
 
 Reject a nomination.
 
-**Authentication:** Required (MANAGER+)
+**Authentication:** Required (MANAGER, HR)
 
 **Request Body:**
 ```json
 {
   "nomination_id": "uuid",
-  "actor_user_id": "uuid",  // Ignored, uses authenticated user
-  "reason": "Does not meet minimum criteria"
+  "reason": "Does not meet minimum criteria",
+  "rating": 4.0
 }
 ```
+
+**Note:** `actor_user_id` is automatically set from authenticated user (not required in request). `rating` is optional (0-10 scale).
 
 **Response:** `201 Created` (same format as approve, with `action: "REJECT"`)
 
@@ -607,7 +838,7 @@ Compute rankings for a cycle (based on approved nominations).
 
 Finalize a cycle (computes rankings and creates history snapshots).
 
-**Authentication:** Required (MANAGER+)
+**Authentication:** Required (HR only)
 
 **Response:** `200 OK`
 ```json
@@ -730,11 +961,20 @@ await fetch('http://localhost:8000/api/v1/nominations', {
   body: JSON.stringify({
     cycle_id: cycle.id,
     nominee_user_id: 'nominee-uuid',
-    submitted_by: 'submitter-uuid', // ignored
     scores: [
-      { criteria_id: 'criteria-1-uuid', score: 8, comment: 'Great leader' },
-      { criteria_id: 'criteria-2-uuid', score: 9, comment: 'Very innovative' },
-      { criteria_id: 'criteria-3-uuid', score: 7, comment: 'Good team player' }
+      { 
+        criteria_id: 'criteria-1-uuid', 
+        answer: { text: 'Excellent leadership skills...' }
+      },
+      { 
+        criteria_id: 'criteria-2-uuid', 
+        answer: { selected: 'Excellent' }
+      },
+      { 
+        criteria_id: 'criteria-3-uuid', 
+        score: 7, 
+        comment: 'Legacy format (backward compatible)'
+      }
     ]
   })
 });
@@ -752,8 +992,8 @@ await fetch('http://localhost:8000/api/v1/approvals/approve', {
   },
   body: JSON.stringify({
     nomination_id: 'nomination-uuid',
-    actor_user_id: 'manager-uuid', // ignored
-    reason: 'Meets all criteria'
+    reason: 'Meets all criteria',
+    rating: 9.5
   })
 });
 
@@ -766,8 +1006,8 @@ await fetch('http://localhost:8000/api/v1/approvals/reject', {
   },
   body: JSON.stringify({
     nomination_id: 'nomination-uuid',
-    actor_user_id: 'manager-uuid', // ignored
-    reason: 'Does not meet minimum requirements'
+    reason: 'Does not meet minimum requirements',
+    rating: 4.0
   })
 });
 ```
@@ -825,6 +1065,13 @@ await fetch(`http://localhost:8000/api/v1/cycles/${cycle.id}/finalize`, {
 7. **Type Safety**: Use TypeScript interfaces matching the API schemas for type safety.
 
 8. **Date Handling**: All dates are ISO 8601 format with timezone (UTC). Use libraries like `date-fns` or `moment.js` for parsing/formatting.
+
+## Additional Documentation
+
+- **[ADMIN_API.md](ADMIN_API.md)** - Complete Admin API documentation for user management
+- **[FLEXIBLE_CRITERIA_SYSTEM.md](FLEXIBLE_CRITERIA_SYSTEM.md)** - Detailed guide on flexible criteria configuration
+- **[ROLES_AND_WORKFLOWS.md](ROLES_AND_WORKFLOWS.md)** - Complete role-based workflows guide
+- **[FRONTEND_GUIDE.md](FRONTEND_GUIDE.md)** - Frontend integration guide with TypeScript interfaces
 
 ## Interactive API Documentation
 
