@@ -14,6 +14,7 @@ from app.db.session import get_session
 from app.models.domain import User
 from app.schemas.base import (
     ApprovalActionRequest,
+    ApprovalCriteriaReviewInput,
     ApprovalRead,
     CriteriaCreate,
     CriteriaRead,
@@ -23,6 +24,7 @@ from app.schemas.base import (
     CycleUpdate,
     NominationCreate,
     NominationRead,
+    NominationScoreRead,
     RankingRead,
     TeamRead,
     UserRead,
@@ -440,11 +442,18 @@ async def get_nomination(
     db: Session = Depends(get_session),
 ) -> NominationRead:
     """Get a specific nomination by ID."""
-    nomination = db.get(models.Nomination, nomination_id)
+    # Eager load relationships
+    from sqlalchemy.orm import joinedload
+    nomination = db.query(models.Nomination).options(
+        joinedload(models.Nomination.nominee),
+        joinedload(models.Nomination.submitted_by_user),
+        joinedload(models.Nomination.scores)
+    ).filter(models.Nomination.id == nomination_id).first()
+    
     if not nomination:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nomination not found")
     
-    # Enrich nomination with user names
+    # Enrich nomination with user names and scores
     nom_dict = NominationRead.model_validate(nomination).model_dump()
     if nomination.nominee:
         nom_dict['nominee_name'] = nomination.nominee.name
@@ -452,6 +461,20 @@ async def get_nomination(
     if nomination.submitted_by_user:
         nom_dict['submitted_by_name'] = nomination.submitted_by_user.name
         nom_dict['submitted_by_email'] = nomination.submitted_by_user.email
+    if nomination.scores:
+        nom_dict['scores'] = [
+            {
+                'id': s.id,
+                'nomination_id': s.nomination_id,
+                'criteria_id': s.criteria_id,
+                'score': s.score,
+                'answer': s.answer,
+                'comment': s.comment,
+                'created_at': s.created_at,
+                'updated_at': s.updated_at
+            }
+            for s in nomination.scores
+        ]
     
     return NominationRead.model_validate(nom_dict)
 
@@ -563,8 +586,31 @@ async def get_nomination_approvals(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nomination not found")
 
     stmt = select(models.Approval).where(models.Approval.nomination_id == nomination_id).order_by(models.Approval.acted_at)
-    approvals = db.scalars(stmt).all()
-    return [ApprovalRead.model_validate(a) for a in approvals]
+    # Eager load criteria reviews
+    from sqlalchemy.orm import joinedload
+    stmt = stmt.options(joinedload(models.Approval.criteria_reviews))
+    approvals = db.scalars(stmt).unique().all()
+    
+    # Enrich approvals with criteria reviews
+    result = []
+    for approval in approvals:
+        approval_dict = ApprovalRead.model_validate(approval).model_dump()
+        if approval.criteria_reviews:
+            approval_dict['criteria_reviews'] = [
+                {
+                    'id': r.id,
+                    'approval_id': r.approval_id,
+                    'criteria_id': r.criteria_id,
+                    'rating': float(r.rating),
+                    'comment': r.comment,
+                    'created_at': r.created_at,
+                    'updated_at': r.updated_at
+                }
+                for r in approval.criteria_reviews
+            ]
+        result.append(ApprovalRead.model_validate(approval_dict))
+    
+    return result
 
 
 @router.post("/approvals/approve", response_model=ApprovalRead, status_code=status.HTTP_201_CREATED)
@@ -576,14 +622,43 @@ async def approve_nomination(
     """Approve a nomination."""
     service = ApprovalService(db)
     try:
+        # Convert criteria_reviews to dict format if provided
+        criteria_reviews = None
+        if approval_data.criteria_reviews:
+            criteria_reviews = [r.model_dump() for r in approval_data.criteria_reviews]
+        
         approval = service.approve(
             nomination_id=approval_data.nomination_id,
             actor_user_id=current_user.id,
             reason=approval_data.reason,
             rating=approval_data.rating,
+            criteria_reviews=criteria_reviews,
         )
         db.commit()
-        return ApprovalRead.model_validate(approval)
+        db.refresh(approval)
+        
+        # Load criteria reviews for response
+        from sqlalchemy.orm import joinedload
+        approval_with_reviews = db.query(models.Approval).options(
+            joinedload(models.Approval.criteria_reviews)
+        ).filter(models.Approval.id == approval.id).first()
+        
+        approval_dict = ApprovalRead.model_validate(approval_with_reviews).model_dump()
+        if approval_with_reviews.criteria_reviews:
+            approval_dict['criteria_reviews'] = [
+                {
+                    'id': r.id,
+                    'approval_id': r.approval_id,
+                    'criteria_id': r.criteria_id,
+                    'rating': float(r.rating),
+                    'comment': r.comment,
+                    'created_at': r.created_at,
+                    'updated_at': r.updated_at
+                }
+                for r in approval_with_reviews.criteria_reviews
+            ]
+        
+        return ApprovalRead.model_validate(approval_dict)
     except ValueError as e:
         db.rollback()
         raise AppError(str(e), status_code=status.HTTP_400_BAD_REQUEST)
@@ -607,14 +682,43 @@ async def reject_nomination(
     """Reject a nomination."""
     service = ApprovalService(db)
     try:
+        # Convert criteria_reviews to dict format if provided
+        criteria_reviews = None
+        if approval_data.criteria_reviews:
+            criteria_reviews = [r.model_dump() for r in approval_data.criteria_reviews]
+        
         approval = service.reject(
             nomination_id=approval_data.nomination_id,
             actor_user_id=current_user.id,
             reason=approval_data.reason,
             rating=approval_data.rating,
+            criteria_reviews=criteria_reviews,
         )
         db.commit()
-        return ApprovalRead.model_validate(approval)
+        db.refresh(approval)
+        
+        # Load criteria reviews for response
+        from sqlalchemy.orm import joinedload
+        approval_with_reviews = db.query(models.Approval).options(
+            joinedload(models.Approval.criteria_reviews)
+        ).filter(models.Approval.id == approval.id).first()
+        
+        approval_dict = ApprovalRead.model_validate(approval_with_reviews).model_dump()
+        if approval_with_reviews.criteria_reviews:
+            approval_dict['criteria_reviews'] = [
+                {
+                    'id': r.id,
+                    'approval_id': r.approval_id,
+                    'criteria_id': r.criteria_id,
+                    'rating': float(r.rating),
+                    'comment': r.comment,
+                    'created_at': r.created_at,
+                    'updated_at': r.updated_at
+                }
+                for r in approval_with_reviews.criteria_reviews
+            ]
+        
+        return ApprovalRead.model_validate(approval_dict)
     except ValueError as e:
         db.rollback()
         raise AppError(str(e), status_code=status.HTTP_400_BAD_REQUEST)

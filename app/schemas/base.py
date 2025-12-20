@@ -131,6 +131,18 @@ class NominationCreate(BaseSchema):
     scores: List[NominationScoreInput]
 
 
+class NominationScoreRead(BaseSchema):
+    """Read schema for nomination criteria scores."""
+    id: UUID
+    nomination_id: UUID
+    criteria_id: UUID
+    score: Optional[int] = None
+    answer: Optional[dict] = None
+    comment: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class NominationRead(BaseSchema):
     id: UUID
     cycle_id: UUID
@@ -145,13 +157,25 @@ class NominationRead(BaseSchema):
     status: str
     created_at: datetime
     updated_at: datetime
+    scores: Optional[List[NominationScoreRead]] = None  # Criteria scores/answers
+
+
+class ApprovalCriteriaReviewInput(BaseSchema):
+    """Manager's review for a single criterion."""
+    criteria_id: UUID
+    rating: float = Field(..., ge=0, description="Manager rating for this criterion (out of criterion weight)")
+    comment: Optional[str] = None
 
 
 class ApprovalActionRequest(BaseSchema):
     nomination_id: UUID
     # actor_user_id is taken from authenticated user, not request body
     reason: Optional[str] = None
-    rating: Optional[float] = Field(None, ge=0, le=10, description="Manager rating (0-10 scale)")
+    rating: Optional[float] = Field(None, ge=0, le=10, description="Overall manager rating (calculated from criteria reviews)")
+    criteria_reviews: Optional[List[ApprovalCriteriaReviewInput]] = Field(
+        None, 
+        description="Per-criterion reviews with ratings and comments"
+    )
 
 
 class ApprovalRead(BaseSchema):

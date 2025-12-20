@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     # Password reset settings
     password_reset_token_expire_hours: int = Field(default=1, alias="PASSWORD_RESET_TOKEN_EXPIRE_HOURS")
     frontend_base_url: str = Field(default="http://localhost:3000", alias="FRONTEND_BASE_URL")
+    
+    # File upload settings
+    upload_dir: str = Field(default="uploads", alias="UPLOAD_DIR")
+    upload_max_size_mb: int = Field(default=10, alias="UPLOAD_MAX_SIZE_MB")
+    upload_allowed_extensions: str = Field(default="jpg,jpeg,png,gif,webp", alias="UPLOAD_ALLOWED_EXTENSIONS")
+    upload_base_url: str = Field(default="http://localhost:8000/uploads", alias="UPLOAD_BASE_URL")
 
     @property
     def cors_origins_list(self) -> List[str]:

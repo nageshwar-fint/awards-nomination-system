@@ -1,6 +1,7 @@
 from app.models.domain import (
     Approval,
     ApprovalAction,
+    ApprovalCriteriaReview,
     AuditLog,
     Criteria,
     CycleStatus,
@@ -21,6 +22,7 @@ from app.models.domain import (
 __all__ = [
     "Approval",
     "ApprovalAction",
+    "ApprovalCriteriaReview",
     "AuditLog",
     "Criteria",
     "CycleStatus",

@@ -179,6 +179,25 @@ class Approval(TimestampedUUIDBase):
 
     nomination: Mapped[Nomination] = relationship("Nomination", back_populates="approvals")
     actor: Mapped[User] = relationship("User")
+    criteria_reviews: Mapped[list["ApprovalCriteriaReview"]] = relationship(
+        "ApprovalCriteriaReview", back_populates="approval", cascade="all, delete-orphan"
+    )
+
+
+class ApprovalCriteriaReview(TimestampedUUIDBase):
+    """Manager's review for each criterion in a nomination."""
+    __tablename__ = "approval_criteria_reviews"
+    __table_args__ = (UniqueConstraint("approval_id", "criteria_id", name="uq_approval_criteria_review"),)
+
+    approval_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("approvals.id"), nullable=False)
+    criteria_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("criteria.id"), nullable=False)
+    # Manager's rating for this criterion (out of the criterion's weight)
+    rating: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
+    # Manager's comment for this criterion
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    approval: Mapped[Approval] = relationship("Approval", back_populates="criteria_reviews")
+    criteria: Mapped[Criteria] = relationship("Criteria")
 
 
 class AuditLog(TimestampedUUIDBase):
