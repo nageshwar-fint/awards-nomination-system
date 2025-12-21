@@ -17,8 +17,11 @@ class AppError(Exception):
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    """Handle application errors with consistent format."""
-    return JSONResponse(
+    """Handle application errors with consistent format and CORS headers."""
+    from app.config import get_settings
+    settings = get_settings()
+    
+    response = JSONResponse(
         status_code=exc.status_code,
         content={
             "error": {
@@ -29,6 +32,14 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
             "request_id": getattr(request.state, "request_id", None),
         },
     )
+    
+    # Explicitly add CORS headers to ensure they're present
+    origin = request.headers.get("origin")
+    if origin and (settings.cors_origins == "*" or origin in settings.cors_origins_list):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -77,15 +88,38 @@ async def permission_error_handler(request: Request, exc: PermissionError) -> JS
 
 
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Handle unhandled exceptions."""
-    return JSONResponse(
+    """Handle unhandled exceptions with CORS headers."""
+    from app.config import get_settings
+    import traceback
+    
+    settings = get_settings()
+    
+    # Log the full error for debugging
+    import structlog
+    logger = structlog.get_logger()
+    logger.error(
+        "unhandled_exception",
+        error=str(exc),
+        error_type=type(exc).__name__,
+        traceback=traceback.format_exc()
+    )
+    
+    response = JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "error": {
                 "message": "Internal server error",
                 "type": type(exc).__name__,
-                "details": {},
+                "details": {"error": str(exc)} if not settings.is_production else {},
             },
             "request_id": getattr(request.state, "request_id", None),
         },
     )
+    
+    # Explicitly add CORS headers to ensure they're present
+    origin = request.headers.get("origin")
+    if origin and (settings.cors_origins == "*" or origin in settings.cors_origins_list):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response

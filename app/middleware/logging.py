@@ -61,4 +61,5 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
                 process_time_ms=round(process_time * 1000, 2),
                 exc_info=True,
             )
+            # Re-raise - error handlers will add CORS headers
             raise
