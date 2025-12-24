@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.auth.jwt import get_current_user, get_optional_user
-from app.auth.rbac import RequireManager, RequireTeamLead, RequireHR, get_current_user_id
+from app.auth.rbac import RequireManager, RequireHR, get_current_user_id
 from app.core.errors import AppError
 from app.db.session import get_session
 from app.models.domain import User
@@ -331,19 +331,19 @@ async def delete_criteria(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-# Users endpoint for nominations (TEAM_LEAD+ can list users to nominate)
+# Users endpoint for nominations (MANAGER+ can list users to nominate)
 @router.get("/users", response_model=List[UserRead])
 async def list_users_for_nominations(
     status_filter: Optional[str] = Query("ACTIVE", description="Filter by status (ACTIVE, INACTIVE)"),
     search: Optional[str] = Query(None, description="Search by name or email"),
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireManager),
     db: Session = Depends(get_session),
 ) -> List[UserRead]:
     """
     List users for nomination purposes.
     
-    Allows TEAM_LEAD, MANAGER, and HR to list users so they can select nominees.
-    Only returns EMPLOYEE role users (cannot nominate HR, MANAGER, or TEAM_LEAD).
+    Allows MANAGER and HR to list users so they can select nominees.
+    Only returns EMPLOYEE role users (cannot nominate HR or MANAGER).
     Only returns active users by default for security.
     """
     from app.models.domain import UserRole
@@ -482,7 +482,7 @@ async def get_nomination(
 @router.post("/nominations", response_model=NominationRead, status_code=status.HTTP_201_CREATED)
 async def submit_nomination(
     nomination_data: NominationCreate,
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireManager),
     db: Session = Depends(get_session),
 ) -> NominationRead:
     """Submit a nomination. Note: submitted_by is taken from authenticated user, not request body."""

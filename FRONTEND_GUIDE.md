@@ -393,15 +393,12 @@ const validateNominationForm = (data: {
 
 ## UI Components Checklist
 
-### For TEAM_LEAD Role
-- [ ] Cycle management (create, update, delete DRAFT cycles)
-- [ ] Criteria management (add, update, delete)
-- [ ] Nomination submission form
-- [ ] View own nominations
-- [ ] View cycles and their status
+### TEAM_LEAD (removed)
+The `TEAM_LEAD` role has been removed. Its responsibilities (primarily submitting nominations) are now handled by the **MANAGER** role.
+
 
 ### For MANAGER Role
-- [ ] All TEAM_LEAD features
+- [ ] All previous TEAM_LEAD features
 - [ ] Approval/rejection interface
 - [ ] View all nominations (pending, approved, rejected)
 - [ ] Compute rankings

@@ -24,7 +24,7 @@ class RequireRole:
 
 
 # Common role dependencies
-RequireTeamLead = RequireRole([UserRole.TEAM_LEAD, UserRole.MANAGER, UserRole.HR])
+# TEAM_LEAD role removed; use RequireManager (MANAGER, HR) for those permissions
 RequireManager = RequireRole([UserRole.MANAGER, UserRole.HR])
 RequireHR = RequireRole([UserRole.HR])
 

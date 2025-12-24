@@ -25,7 +25,7 @@ The system has **4 user roles** with hierarchical permissions:
 - **Can**: Read-only access to all public data
 - **Cannot**: Create, modify, or approve anything
 
-### 2. **TEAM_LEAD** 👨‍💼
+### 2. **TEAM_LEAD (removed)** 👨‍💼
 - **Mid-level permission**
 - **Primary Purpose**: Submit nominations for team members
 - **Can**: 
@@ -37,7 +37,7 @@ The system has **4 user roles** with hierarchical permissions:
 - **High-level permission**
 - **Primary Purpose**: Oversee nominations, approve/reject, and manage rankings
 - **Can**: 
-  - All TEAM_LEAD permissions
+  - (removed) All TEAM_LEAD permissions
   - Approve or reject nominations
   - Compute rankings for cycles
   - Finalize cycles
@@ -57,20 +57,20 @@ The system has **4 user roles** with hierarchical permissions:
 
 ## Role Permissions Matrix
 
-| Feature | EMPLOYEE | TEAM_LEAD | MANAGER | HR |
-|---------|----------|-----------|---------|-----|
-| **View Cycles** | ✅ | ✅ | ✅ | ✅ |
-| **View Nominations** | ✅ | ✅ | ✅ | ✅ |
-| **View Rankings** | ✅ | ✅ | ✅ | ✅ |
-| **Create Cycles** | ❌ | ❌ | ❌ | ✅ |
-| **Update Cycles** (DRAFT only) | ❌ | ❌ | ❌ | ✅ |
-| **Delete Cycles** (DRAFT only) | ❌ | ❌ | ❌ | ✅ |
-| **Close/Finalize Cycles** | ❌ | ❌ | ❌ | ✅ |
-| **Manage Criteria** (Create/Update/Delete) | ❌ | ❌ | ❌ | ✅ |
-| **Submit Nominations** | ❌ | ✅ | ✅ | ✅ |
-| **Approve Nominations** | ❌ | ❌ | ✅ | ✅ |
-| **Reject Nominations** | ❌ | ❌ | ✅ | ✅ |
-| **Compute Rankings** | ❌ | ❌ | ✅ | ✅ |
+| Feature | EMPLOYEE | MANAGER | HR |
+|---------|----------|---------|-----|
+| **View Cycles** | ✅ | ✅ | ✅ |
+| **View Nominations** | ✅ | ✅ | ✅ |
+| **View Rankings** | ✅ | ✅ | ✅ |
+| **Create Cycles** | ❌ | ❌ | ✅ |
+| **Update Cycles** (DRAFT only) | ❌ | ❌ | ✅ |
+| **Delete Cycles** (DRAFT only) | ❌ | ❌ | ✅ |
+| **Close/Finalize Cycles** | ❌ | ❌ | ✅ |
+| **Manage Criteria** (Create/Update/Delete) | ❌ | ❌ | ✅ |
+| **Submit Nominations** | ❌ | ✅ | ✅ |
+| **Approve Nominations** | ❌ | ✅ | ✅ |
+| **Reject Nominations** | ❌ | ✅ | ✅ |
+| **Compute Rankings** | ❌ | ✅ | ✅ |
 
 ---
 
@@ -100,18 +100,9 @@ GET /api/v1/cycles/{cycle_id}/rankings
 
 ---
 
-### TEAM_LEAD Workflow
+### TEAM_LEAD (removed)
 
-**Primary Responsibilities:**
-1. **Submit Nominations** for team members
-
-**Note**: Cycle creation and criteria management are now HR-only functions. Team Leads focus on submitting nominations.
-
-**Step-by-Step Workflow:**
-
-#### 1. Submit a Nomination
-
-See the "Submit Nomination" section below.
+The `TEAM_LEAD` role has been removed. Its primary responsibilities — notably submitting nominations on behalf of team members — are now handled by the **MANAGER** role.
 
 ---
 
@@ -253,7 +244,7 @@ const submitNomination = async (nomination: {
 - Cycle must be within `start_at` and `end_at` date range
 - Answers should match the criteria question type (text, select, etc.)
 
-**What TEAM_LEAD Cannot Do:**
+**What previous TEAM_LEAD could not do:**
 - ❌ Create/update/delete cycles
 - ❌ Create/update/delete criteria
 - ❌ Approve/reject nominations
@@ -469,11 +460,11 @@ DRAFT → OPEN → CLOSED → FINALIZED
 const getAvailableActions = (cycle: Cycle, userRole: UserRole) => {
   const actions = [];
   
-  if (cycle.status === 'DRAFT' && ['TEAM_LEAD', 'MANAGER', 'HR'].includes(userRole)) {
+  if (cycle.status === 'DRAFT' && ['MANAGER', 'HR'].includes(userRole)) {
     actions.push('EDIT', 'DELETE', 'ADD_CRITERIA', 'OPEN');
   }
   
-  if (cycle.status === 'OPEN' && ['TEAM_LEAD', 'MANAGER', 'HR'].includes(userRole)) {
+  if (cycle.status === 'OPEN' && ['MANAGER', 'HR'].includes(userRole)) {
     actions.push('SUBMIT_NOMINATION');
     // Dates can still be updated
     actions.push('UPDATE_DATES');
@@ -506,7 +497,7 @@ PENDING → APPROVED
 ### Nomination Lifecycle
 
 1. **Submission (PENDING)**
-   - TEAM_LEAD+ submits nomination
+   - MANAGER+ submits nomination
    - Status: `PENDING`
    - Includes scores for all criteria
 
@@ -672,7 +663,7 @@ const getUserRole = (): UserRole => {
 const CycleManagementButton = ({ cycle }: { cycle: Cycle }) => {
   const userRole = getUserRole();
   const canEdit = cycle.status === 'DRAFT' && 
-                  ['TEAM_LEAD', 'MANAGER', 'HR'].includes(userRole);
+                  ['MANAGER', 'HR'].includes(userRole);
   
   if (!canEdit) return null;
   
@@ -712,7 +703,7 @@ const handleApiError = async (response: Response) => {
 // Disable buttons/actions based on permissions
 const canSubmitNomination = (cycle: Cycle, userRole: UserRole): boolean => {
   return cycle.status === 'OPEN' && 
-         ['TEAM_LEAD', 'MANAGER', 'HR'].includes(userRole) &&
+         ['MANAGER', 'HR'].includes(userRole) &&
          new Date() >= new Date(cycle.start_at) &&
          new Date() <= new Date(cycle.end_at);
 };
@@ -803,14 +794,14 @@ const validateNominationScores = (
 ## Quick Reference: Who Can Do What
 
 ### Creating Content
-- **Create Cycle**: TEAM_LEAD, MANAGER, HR
-- **Add Criteria**: TEAM_LEAD, MANAGER, HR (DRAFT cycles only)
-- **Submit Nomination**: TEAM_LEAD, MANAGER, HR (OPEN cycles only)
+- **Create Cycle**: MANAGER, HR
+- **Add Criteria**: MANAGER, HR (DRAFT cycles only)
+- **Submit Nomination**: MANAGER, HR (OPEN cycles only)
 
 ### Modifying Content
-- **Update Cycle**: TEAM_LEAD, MANAGER, HR (DRAFT only)
-- **Update Criteria**: TEAM_LEAD, MANAGER, HR (DRAFT cycles, unused criteria only)
-- **Delete Cycle**: TEAM_LEAD, MANAGER, HR (DRAFT, no nominations)
+- **Update Cycle**: MANAGER, HR (DRAFT only)
+- **Update Criteria**: MANAGER, HR (DRAFT cycles, unused criteria only)
+- **Delete Cycle**: MANAGER, HR (DRAFT, no nominations)
 
 ### Approvals
 - **Approve Nomination**: MANAGER, HR
@@ -821,7 +812,7 @@ const validateNominationScores = (
 - **Finalize Cycle**: MANAGER, HR
 
 ### Viewing
-- **View Everything**: All roles (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+- **View Everything**: All roles (EMPLOYEE, MANAGER, HR)
 
 ---
 

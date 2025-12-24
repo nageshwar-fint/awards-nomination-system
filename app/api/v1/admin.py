@@ -41,7 +41,7 @@ def create_user(
     
     - Email must be unique
     - Password must meet strength requirements
-    - Role must be a valid UserRole enum value (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+    - Role must be a valid UserRole enum value (EMPLOYEE, MANAGER, HR)
     - HR can assign any role including HR (admin) role - no restrictions
     - Status defaults to ACTIVE if not provided
     - Team must exist if team_id is provided
@@ -128,7 +128,7 @@ def create_user(
 def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
-    role_filter: Optional[str] = Query(None, description="Filter by role (EMPLOYEE, TEAM_LEAD, MANAGER, HR)"),
+    role_filter: Optional[str] = Query(None, description="Filter by role (EMPLOYEE, MANAGER, HR)"),
     status_filter: Optional[str] = Query(None, description="Filter by status (ACTIVE, INACTIVE)"),
     team_id: Optional[UUID] = Query(None, description="Filter by team ID"),
     search: Optional[str] = Query(None, description="Search by name or email"),
@@ -222,7 +222,7 @@ def update_user(
     
     - Cannot update password through this endpoint (use password reset flow)
     - Email uniqueness is validated if email is being updated
-    - Role must be a valid UserRole enum value (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+    - Role must be a valid UserRole enum value (EMPLOYEE, MANAGER, HR)
     - HR can assign or remove any role including HR (admin) role - no restrictions
     - Status must be ACTIVE or INACTIVE
     """

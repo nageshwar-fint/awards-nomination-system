@@ -45,7 +45,7 @@ Service contract summary (for Vamsi wiring)
 - NominationService
   - create_cycle(name, start_at, end_at, created_by) -> NominationCycle
   - add_criteria_to_cycle(cycle_id, criteria: list[{name, weight, description?, is_active?}]) -> list[Criteria]; enforces weight <= 1.0
-  - submit_nomination(cycle_id, nominee_user_id, submitted_by, scores: list[{criteria_id, score, comment?}]) -> Nomination; requires cycle OPEN and submitter role in TEAM_LEAD/MANAGER/HR; raises ValueError/PermissionError on rule breaches; duplicate guard on (cycle, nominee, submitter)
+  - submit_nomination(cycle_id, nominee_user_id, submitted_by, scores: list[{criteria_id, score, comment?}]) -> Nomination; requires cycle OPEN and submitter role in MANAGER/HR; raises ValueError/PermissionError on rule breaches; duplicate guard on (cycle, nominee, submitter)
 - ApprovalService
   - approve(nomination_id, actor_user_id, reason?) / reject(...) -> Approval; requires actor role MANAGER/HR; only PENDING nominations allowed
 - RankingService

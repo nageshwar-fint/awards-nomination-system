@@ -14,7 +14,7 @@ This system enables organizations to run structured nomination cycles where team
 - **Approval Workflow**: Managers and HR can approve or reject nominations
 - **Ranking System**: Automatic computation of weighted rankings based on criteria scores
 - **Cycle Finalization**: Finalize cycles with historical snapshots
-- **Role-Based Access Control (RBAC)**: Enforced at API level (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+- **Role-Based Access Control (RBAC)**: Enforced at API level (EMPLOYEE, MANAGER, HR) 
 - **JWT Authentication**: Secure API access with JWT tokens
 - **Audit Logging**: All actions are logged for audit purposes
 - **RESTful API**: Complete CRUD operations with proper HTTP methods
@@ -104,21 +104,21 @@ The API runs on `http://localhost:8000` by default.
 ### Cycles
 - `GET /api/v1/cycles` - List all cycles
 - `GET /api/v1/cycles/{cycle_id}` - Get cycle details
-- `POST /api/v1/cycles` - Create new cycle (Requires: TEAM_LEAD+)
-- `PATCH /api/v1/cycles/{cycle_id}` - Update cycle (Requires: TEAM_LEAD+, DRAFT only)
-- `DELETE /api/v1/cycles/{cycle_id}` - Delete cycle (Requires: TEAM_LEAD+, DRAFT only)
+- `POST /api/v1/cycles` - Create new cycle (Requires: MANAGER+)
+- `PATCH /api/v1/cycles/{cycle_id}` - Update cycle (Requires: MANAGER+, DRAFT only)
+- `DELETE /api/v1/cycles/{cycle_id}` - Delete cycle (Requires: MANAGER+, DRAFT only)
 
 ### Criteria
 - `GET /api/v1/cycles/{cycle_id}/criteria` - List criteria for cycle
 - `GET /api/v1/criteria/{criteria_id}` - Get criteria details
-- `POST /api/v1/cycles/{cycle_id}/criteria` - Add criteria (Requires: TEAM_LEAD+)
-- `PATCH /api/v1/criteria/{criteria_id}` - Update criteria (Requires: TEAM_LEAD+)
-- `DELETE /api/v1/criteria/{criteria_id}` - Delete criteria (Requires: TEAM_LEAD+, unused only)
+- `POST /api/v1/cycles/{cycle_id}/criteria` - Add criteria (Requires: MANAGER+)
+- `PATCH /api/v1/criteria/{criteria_id}` - Update criteria (Requires: MANAGER+)
+- `DELETE /api/v1/criteria/{criteria_id}` - Delete criteria (Requires: MANAGER+, unused only)
 
 ### Nominations
 - `GET /api/v1/nominations` - List nominations (with filters)
 - `GET /api/v1/nominations/{nomination_id}` - Get nomination details
-- `POST /api/v1/nominations` - Submit nomination (Requires: TEAM_LEAD+)
+- `POST /api/v1/nominations` - Submit nomination (Requires: MANAGER+)
 
 ### Approvals
 - `GET /api/v1/nominations/{nomination_id}/approvals` - List approvals for nomination
@@ -143,7 +143,7 @@ JWT tokens are created with user ID, email, and role. Role-based access control 
 ### Roles Hierarchy
 
 - **EMPLOYEE**: Basic read access
-- **TEAM_LEAD**: Can submit nominations, create cycles
+- **MANAGER**: Can submit nominations, create cycles
 - **MANAGER**: Can approve/reject nominations, compute rankings
 - **HR**: Full access including all manager permissions
 

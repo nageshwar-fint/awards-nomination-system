@@ -48,7 +48,7 @@ See [Authentication Endpoints](#authentication) section for details.
 JWT tokens contain:
 - `sub`: User ID (UUID)
 - `email`: User email
-- `role`: User role (EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+- `role`: User role (EMPLOYEE, MANAGER, HR)
 - `exp`: Expiration timestamp
 - `iss`: Issuer (awards-nomination-system)
 - `aud`: Audience (awards-nomination-system)
@@ -60,7 +60,7 @@ JWT tokens contain:
 | Role | Permissions |
 |------|-------------|
 | **EMPLOYEE** | Read-only access (view cycles, nominations, rankings) |
-| **TEAM_LEAD** | Submit nominations |
+| **MANAGER** | Submit nominations |
 | **MANAGER** | Submit nominations, approve/reject nominations (with ratings), compute rankings |
 | **HR** | Full system access: manage cycles (create/update/delete/finalize), manage criteria (create/update/delete with flexible config), manage users (create/read/update/delete/activate/deactivate, assign any role including HR), approve nominations, compute rankings |
 
@@ -587,7 +587,7 @@ Get a specific nomination by ID.
 
 Submit a new nomination with flexible criteria answers.
 
-**Authentication:** Required (TEAM_LEAD, MANAGER, HR)
+**Authentication:** Required (MANAGER, HR)
 
 **Request Body:**
 ```json
@@ -657,7 +657,7 @@ Submit a new nomination with flexible criteria answers.
 - `400`: Cycle not open for submissions
 - `400`: Criteria not active or not part of cycle
 - `400`: Duplicate nomination for this cycle/nominee/submitter
-- `403`: Only TEAM_LEAD, MANAGER, or HR can submit nominations
+- `403`: Only MANAGER or HR can submit nominations
 
 **Notes:**
 - All criteria for the cycle must have scores

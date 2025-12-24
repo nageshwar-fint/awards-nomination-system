@@ -172,7 +172,7 @@ interface LoginRequest {
     "id": "uuid",
     "name": "John Doe",
     "email": "john.doe@example.com",
-    "role": "TEAM_LEAD",
+    "role": "MANAGER",
     "team_id": "uuid",
     "status": "ACTIVE"
   }

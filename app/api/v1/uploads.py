@@ -7,7 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
-from app.auth.rbac import RequireTeamLead
+from app.auth.rbac import RequireManager
 from app.config import get_settings
 from app.db.session import get_session
 from app.models.domain import User
@@ -49,7 +49,7 @@ def validate_image_file(file: UploadFile) -> None:
 @router.post("/uploads/images", response_class=JSONResponse)
 async def upload_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireManager),
     db: Session = Depends(get_session),
 ) -> dict:
     """
@@ -101,7 +101,7 @@ async def upload_image(
 @router.post("/uploads/images/batch", response_class=JSONResponse)
 async def upload_images_batch(
     files: List[UploadFile] = File(..., description="Multiple image files to upload"),
-    current_user: User = Depends(RequireTeamLead),
+    current_user: User = Depends(RequireManager),
     db: Session = Depends(get_session),
 ) -> dict:
     """

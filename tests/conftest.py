@@ -138,12 +138,13 @@ def test_employee_user(db_session: Session, test_team: Team) -> User:
 
 @pytest.fixture
 def test_team_lead_user(db_session: Session, test_team: Team) -> User:
-    """Create a test team lead user."""
+    """Create a test user that previously represented a TEAM_LEAD — now mapped to MANAGER."""
     user = User(
         id=uuid4(),
-        name="Team Lead User",
+        name="Team Lead User (mapped)",
         email="teamlead@test.com",
-        role=UserRole.TEAM_LEAD,
+        # TEAM_LEAD removed - use MANAGER for tests that expected team-lead capabilities
+        role=UserRole.MANAGER,
         team_id=test_team.id,
         status="ACTIVE",
     )

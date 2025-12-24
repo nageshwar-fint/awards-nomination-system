@@ -13,7 +13,7 @@ The system has 4 roles with different permissions:
 | Role | Permissions |
 |------|-------------|
 | **EMPLOYEE** | View-only access (cycles, nominations, rankings) |
-| **TEAM_LEAD** | Submit nominations |
+| **MANAGER** | Submit nominations |
 | **MANAGER** | Submit nominations, approve/reject with ratings, compute rankings |
 | **HR** | Full system access: manage cycles, criteria, users (including role assignment/removal for all roles including HR), approve, finalize |
 
@@ -269,7 +269,7 @@ localStorage.removeItem('jwt_token');
 const userRole = getUserRole(); // From JWT token
 
 {userRole === 'HR' && <CycleManagement />}
-{['TEAM_LEAD', 'MANAGER', 'HR'].includes(userRole) && <NominationForm />}
+{['MANAGER', 'HR'].includes(userRole) && <NominationForm />}
 {['MANAGER', 'HR'].includes(userRole) && <ApprovalInterface />}
 ```
 
@@ -313,7 +313,7 @@ const userRole = getUserRole(); // From JWT token
    - Name (required)
    - Email (required, validated for uniqueness)
    - Password (required, validated for strength)
-   - Role (required: EMPLOYEE, TEAM_LEAD, MANAGER, HR)
+   - Role (required: EMPLOYEE, MANAGER, HR)
    - Team (optional dropdown)
    - Status (default: ACTIVE)
 4. Form validates password strength

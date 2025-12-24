@@ -23,7 +23,6 @@ from app.db.base import TimestampedUUIDBase
 
 class UserRole(str, enum.Enum):
     EMPLOYEE = "EMPLOYEE"
-    TEAM_LEAD = "TEAM_LEAD"
     MANAGER = "MANAGER"
     HR = "HR"
 

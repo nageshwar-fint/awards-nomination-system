@@ -67,7 +67,7 @@ Common fixtures available in `conftest.py`:
 - `client` - FastAPI TestClient
 - `test_team` - Test team
 - `test_employee_user` - Employee user
-- `test_team_lead_user` - Team lead user
+- `test_team_lead_user` - Team lead user (DEPRECATED: mapped to a MANAGER role; retained for backwards compatibility in tests)
 - `test_manager_user` - Manager user
 - `test_hr_user` - HR user
 - `test_cycle` - Open nomination cycle

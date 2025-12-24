@@ -200,7 +200,8 @@ def main() -> None:
             # Create demo users (without passwords - they need to register)
             demo_users = [
                 User(name="Demo Manager", email="manager@example.com", role=UserRole.MANAGER, team_id=demo_team.id),
-                User(name="Demo Team Lead", email="lead@example.com", role=UserRole.TEAM_LEAD, team_id=demo_team.id),
+                # TEAM_LEAD removed - map previous team leads to MANAGER
+                User(name="Demo Lead (mapped to Manager)", email="lead@example.com", role=UserRole.MANAGER, team_id=demo_team.id),
             ]
             session.add_all(demo_users)
             print("✅ Created demo team and users (these users need to register to set passwords)")

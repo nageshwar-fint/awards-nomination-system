@@ -69,8 +69,8 @@ class NominationService:
             raise ValueError("Cycle not open for submissions")
 
         submitter = self._get_user_or_raise(submitted_by)
-        if submitter.role not in (models.UserRole.TEAM_LEAD, models.UserRole.MANAGER, models.UserRole.HR):
-            raise PermissionError("Only TEAM_LEAD, MANAGER, or HR can submit nominations")
+        if submitter.role not in (models.UserRole.MANAGER, models.UserRole.HR):
+            raise PermissionError("Only MANAGER or HR can submit nominations")
 
         nominee = self._get_user_or_raise(nominee_user_id)
         

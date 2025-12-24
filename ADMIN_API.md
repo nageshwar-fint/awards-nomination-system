@@ -26,7 +26,7 @@ Create a new user account. HR can create users with any role.
   "name": "John Doe",                    // Required: string, max 255 chars
   "email": "john@example.com",           // Required: string, must be unique
   "password": "SecurePass123!",          // Required: string, min 8 chars, must meet strength requirements
-  "role": "EMPLOYEE",                    // Required: one of EMPLOYEE, TEAM_LEAD, MANAGER, HR
+  "role": "EMPLOYEE",                    // Required: one of EMPLOYEE, MANAGER, HR
   "team_id": "uuid-or-null",             // Optional: UUID or null
   "status": "ACTIVE"                     // Optional: ACTIVE or INACTIVE (default: ACTIVE)
 }
@@ -41,7 +41,7 @@ Create a new user account. HR can create users with any role.
 
 **Role Assignment:**
 - HR can assign any role including HR (admin) role to users
-- Available roles: `EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`
+- Available roles: `EMPLOYEE`, `MANAGER`, `HR`
 - No restrictions on role assignment - HR has full control
 
 **Response:** `201 Created`
@@ -77,7 +77,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/users" \
     "name": "John Doe",
     "email": "john@example.com",
     "password": "SecurePass123!",
-    "role": "TEAM_LEAD",
+    "role": "MANAGER",
     "team_id": "team-uuid",
     "status": "ACTIVE"
   }'
@@ -94,7 +94,7 @@ List all users with optional filtering.
 **Query Parameters:**
 - `skip` (int, default: 0): Number of records to skip
 - `limit` (int, default: 100, max: 1000): Number of records to return
-- `role_filter` (string, optional): Filter by role (`EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`)
+- `role_filter` (string, optional): Filter by role (`EMPLOYEE`, `MANAGER`, `HR`) 
 - `status_filter` (string, optional): Filter by status (`ACTIVE`, `INACTIVE`)
 - `team_id` (UUID, optional): Filter by team ID
 - `search` (string, optional): Search by name or email (case-insensitive partial match)
@@ -170,7 +170,7 @@ Update a user's information. All fields are optional - only provided fields will
 {
   "name": "John Doe Updated",           // Optional: string, max 255 chars
   "email": "john.updated@example.com",  // Optional: string, must be unique
-  "role": "TEAM_LEAD",                  // Optional: one of EMPLOYEE, TEAM_LEAD, MANAGER, HR
+  "role": "MANAGER",                  // Optional: one of EMPLOYEE, MANAGER, HR
   "team_id": "uuid-or-null",            // Optional: UUID or null
   "status": "ACTIVE"                    // Optional: ACTIVE or INACTIVE
 }
@@ -182,7 +182,7 @@ Update a user's information. All fields are optional - only provided fields will
   "id": "uuid",
   "name": "John Doe Updated",
   "email": "john.updated@example.com",
-  "role": "TEAM_LEAD",
+  "role": "MANAGER",
   "team_id": "uuid",
   "status": "ACTIVE",
   "created_at": "2024-01-01T00:00:00Z",
@@ -196,7 +196,7 @@ Update a user's information. All fields are optional - only provided fields will
 
 **Validation:**
 - Email must be unique (if provided)
-- Role must be valid UserRole enum value (`EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`)
+- Role must be valid UserRole enum value (`EMPLOYEE`, `MANAGER`, `HR`) *Note: `TEAM_LEAD` role has been removed; map to `MANAGER` if needed.*
 - HR can assign or remove any role, including HR (admin) role - no restrictions
 - Status must be `ACTIVE` or `INACTIVE`
 - Team ID must exist in database (if provided)
@@ -309,7 +309,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/users/123e4567-e89b-12d3-a456-4
 curl -X PATCH "http://localhost:8000/api/v1/admin/users/{user_id}" \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"role": "TEAM_LEAD"}'
+  -d '{"role": "MANAGER"}'
 ```
 
 ### Assign HR (Admin) Role to User
@@ -417,11 +417,11 @@ All errors follow the standard error format:
 4. **Role Management**: HR has full control over role assignment:
    - HR can assign or remove any role including HR (admin) role
    - No restrictions on role changes - HR can promote or demote any user
-   - Available roles: `EMPLOYEE`, `TEAM_LEAD`, `MANAGER`, `HR`
+   - Available roles: `EMPLOYEE`, `MANAGER`, `HR`
    
    **Role Hierarchy**:
    - `EMPLOYEE`: Basic user (view-only access)
-   - `TEAM_LEAD`: Can submit nominations
+   - `MANAGER`: Can submit nominations
    - `MANAGER`: Can approve nominations and compute rankings
    - `HR`: Full administrative access (required for admin API, can manage everything)
 

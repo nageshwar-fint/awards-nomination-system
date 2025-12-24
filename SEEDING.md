@@ -82,7 +82,7 @@ The seed script also creates demo data (team and users) if the database is empty
 - **Team**: "Demo Team"
 - **Users**:
   - Manager: `manager@example.com` (MANAGER role)
-  - Team Lead: `lead@example.com` (TEAM_LEAD role)
+  - Team Lead (mapped): `lead@example.com` (MANAGER role)
 
 **Note**: Demo users don't have passwords. They need to register using the registration endpoint to set passwords.
 

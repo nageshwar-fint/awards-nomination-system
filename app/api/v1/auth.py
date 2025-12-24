@@ -160,12 +160,7 @@ def login(
             detail="Account is inactive. Please contact administrator."
         )
     
-    # Check if user is an employee - employees cannot login
-    if user.role == UserRole.EMPLOYEE:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Employee accounts cannot login to the system. Please contact your administrator if you need access."
-        )
+
     
     # Create access token
     access_token = create_access_token(user)

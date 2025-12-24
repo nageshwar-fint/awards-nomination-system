@@ -166,8 +166,8 @@ def test_get_user(client: TestClient, test_hr_user, test_employee_user, get_auth
 
 def test_update_user_role(client: TestClient, test_hr_user, test_employee_user, get_auth_headers):
     """Test HR can update user role, including assigning HR role."""
-    # Promote to TEAM_LEAD
-    update_data = {"role": "TEAM_LEAD"}
+    # Promote to MANAGER (TEAM_LEAD role removed)
+    update_data = {"role": "MANAGER"}
     response = client.patch(
         f"/api/v1/admin/users/{test_employee_user.id}",
         json=update_data,
@@ -175,7 +175,7 @@ def test_update_user_role(client: TestClient, test_hr_user, test_employee_user, 
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["role"] == "TEAM_LEAD"
+    assert data["role"] == "MANAGER"
     
     # Promote to HR (admin)
     update_data = {"role": "HR"}
